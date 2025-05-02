@@ -1,0 +1,50 @@
+=== BACKUP 20250428_072600 ===
+Metadata: {
+  "type": "market_analysis_crisp",
+  "book_type": "Manuale (Non-Fiction)",
+  "keyword": "Excel 2025",
+  "language": "Italiano",
+  "market": "USA",
+  "timestamp": "20250428_072600"
+}
+[07:23:35.494] Framework CRISP disattivato, verrà utilizzato il sistema legacy
+[07:23:39.746] DEBUG_URL: Monitoraggio navigazione attivato per nuovo driver
+[07:23:39.746] Browser avviato: True
+[07:23:39.746] Tentativo di navigazione a Genspark...
+[07:23:39.746] Navigazione diretta alla pagina di chat...
+[07:23:39.746] DEBUG_URL: Navigazione a: https://genspark.ai
+[07:23:48.454] URL dopo navigazione: https://www.genspark.ai/
+[07:23:48.455] Reindirizzato a URL non di chat, provo approccio alternativo...
+[07:23:48.455] DEBUG_URL: Navigazione a: https://genspark.ai/
+[07:23:52.006] URL finale: https://www.genspark.ai/
+[07:23:52.006] DEBUG_URL: Verificando login...
+[07:23:55.044] DEBUG_URL: Risultato check_login: True
+[07:23:55.044] [07:23:38] Avvio connessione browser...
+[07:24:31.884] ✅ Analisi per 'backup 20250426 020346' caricata con successo
+[07:24:31.884] Errore nel caricamento dell'analisi: AIBookBuilder.load_analysis_results() takes 1 positional argument but 2 were given
+[07:24:42.183] ✅ Analisi per 'backup 20250427 121401' caricata con successo
+[07:24:42.184] Errore nel caricamento dell'analisi: AIBookBuilder.load_analysis_results() takes 1 positional argument but 2 were given
+[07:24:52.079] Errore nella verifica di analisi esistenti: no such column: v.name
+[07:24:52.079] Avvio analisi di mercato per: Excel 2025
+[07:24:52.079] ℹ️ Modalità analisi selezionata: CRISP
+[07:24:52.079] 🔍 Fasi CRISP selezionate: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8
+[07:24:52.079] Avvio analisi CRISP 5.0 per: Excel 2025
+[07:24:52.079] 🔍 Esecuzione selettiva delle fasi CRISP: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8
+[07:24:52.080] ❌ Errore nell'analisi CRISP: name 'datetime' is not defined
+[07:24:52.081] ✅ Risultati dell'analisi CRISP salvati nel contesto (1711 caratteri)
+[07:25:28.037] Errore nella verifica di analisi esistenti: no such column: v.name
+[07:25:28.037] Avvio analisi di mercato per: Excel 2025
+[07:25:28.038] ℹ️ Modalità analisi selezionata: CRISP
+[07:25:28.038] 🔍 Fasi CRISP selezionate: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8
+[07:25:28.038] Avvio analisi CRISP 5.0 per: Excel 2025
+[07:25:28.038] 🔍 Esecuzione selettiva delle fasi CRISP: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8
+[07:25:28.039] ❌ Errore nell'analisi CRISP: name 'datetime' is not defined
+[07:25:28.047] ✅ Risultati dell'analisi CRISP salvati nel contesto (2308 caratteri)
+[07:25:42.075] Framework CRISP disattivato, verrà utilizzato il sistema legacy
+[07:26:00.917] Errore nella verifica di analisi esistenti: no such column: v.name
+[07:26:00.918] Avvio analisi di mercato per: Excel 2025
+[07:26:00.919] ℹ️ Modalità analisi selezionata: CRISP
+[07:26:00.919] 🔍 Fasi CRISP selezionate: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8
+[07:26:00.920] Avvio analisi CRISP 5.0 per: Excel 2025
+[07:26:00.920] 🔍 Esecuzione selettiva delle fasi CRISP: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8
+[07:26:00.921] ❌ Errore nell'analisi CRISP: name 'datetime' is not defined

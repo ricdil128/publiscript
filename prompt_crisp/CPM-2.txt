@@ -1,0 +1,59 @@
+------ METADATA ------
+ID: CPM-2
+Fase: Marketing e Promozione
+Versione: 5.0
+------ END METADATA ------
+
+------ VARIABLES ------
+TITOLO_LIBRO
+SOTTOTITOLO_LIBRO
+KEYWORD
+MERCATO
+ANGOLO_ATTACCO
+BUYER_PERSONA_SUMMARY
+BIG_IDEA
+CONTENT_PILLARS
+BESTSELLER_OVERVIEW
+------ END VARIABLES ------
+
+Questo prompt sviluppa un brief completo per la copertina e l'identità visiva del libro "{TITOLO_LIBRO}: {SOTTOTITOLO_LIBRO}", perfettamente allineati con il posizionamento strategico.
+
+ISTRUZIONI GENERALI:
+- Rispondi in modo diretto e conciso a ciascuna domanda
+- Utilizza la parola FINE_RISPOSTA solo quando hai completato la risposta
+- Evita approfondimenti eccessivi non richiesti esplicitamente
+
+------ PROMPT ------
+1. ANALISI VISIVA COMPETITIVA: Analizza le tendenze principali nelle copertine dei libri su "{KEYWORD}" in {MERCATO}, esaminando: stili dominanti (fotografico/illustrativo/tipografico), palette colori prevalenti, approcci tipografici, layout comuni, e elementi simbolici ricorrenti. Identifica opportunità di differenziazione visiva. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+2. POSIZIONAMENTO VISIVO: Basandoti su "{ANGOLO_ATTACCO}" e {BIG_IDEA}, definisci il posizionamento visivo ideale per la copertina: emozioni chiave da evocare, impressione immediata da comunicare, e promessa visiva da trasmettere. Spiega come questo posizionamento si allinea con le aspettative e preferenze di {BUYER_PERSONA_SUMMARY}.Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+3. CONCEPT CREATIVO: Sviluppa un concept creativo principale per la copertina che comunica visivamente l'essenza di {BIG_IDEA} e supporta i {CONTENT_PILLARS}. Descrivi: tipologia di immagine principale (concettuale/letterale/astratta), elementi simbolici chiave, approccio visivo generale, e mood complessivo. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+4. SPECIFICHE TECNICHE: Fornisci dettagli tecnici per il designer, includendo: palette colori suggerita con motivazione psicologica, gerarchia tipografica (trattamento di titolo/sottotitolo/nome autore), bilanciamento e composizione, e livello di complessità visiva ideale (minimalista vs dettagliato). Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+5. VARIAZIONI E TEST: Proponi 2 variazioni del concept principale che mantengono il posizionamento ma offrono approcci visivi alternativi. Per ciascuna variante, spiega quali elementi rimangono costanti e quali cambiano, nonché i potenziali vantaggi di ciascun approccio. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+6. ESTENSIONI DELL'IDENTITÀ: Descrivi come l'identità visiva della copertina può estendersi ad altri elementi di marketing: banner social, thumbnail Amazon, materiali promozionali, e sito web. Identifica gli elementi visivi costanti che devono rimanere coerenti in tutte le applicazioni. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+7.1. COVER_BRIEF: Genera il documento completo che include tutti gli elementi strategici, tecnici e creativi per la copertina, organizzato in modo chiaro e utilizzabile direttamente da un designer. Scrivi in {lingua} ma titoli e kw nella lingua del {market}.  Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.  
+  
+---
+
+7.2. VISUAL_ELEMENTS: Crea una tabella con elenco sintetico dei 10 elementi visivi cruciali che definiscono l'identità visiva del libro, utilizzabile come checklist per valutare le proposte di design. Scrivi in {lingua} ma titoli e kw nella lingua del {market}.  Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.  
+
+---
+
+------ END PROMPT ------

@@ -1,0 +1,8 @@
+2025/05/02-19:11:27.899 20949c Reusing MANIFEST C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Local Storage\leveldb/MANIFEST-000001
+2025/05/02-19:11:27.907 20949c Recovering log #519
+2025/05/02-19:11:27.907 20949c Level-0 table #522: started
+2025/05/02-19:11:27.918 20949c Level-0 table #522: 152107 bytes OK
+2025/05/02-19:11:27.924 20949c Delete type=0 #519
+2025/05/02-19:12:27.944 20cda8 Level-0 table #525: started
+2025/05/02-19:12:27.950 20cda8 Level-0 table #525: 152191 bytes OK
+2025/05/02-19:12:27.953 20cda8 Delete type=0 #523

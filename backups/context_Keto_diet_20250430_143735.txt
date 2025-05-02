@@ -1,0 +1,25 @@
+=== BACKUP Analisi Legacy: Keto diet - Keto_diet - 20250430_143735 ===
+Metadata: {
+  "type": "market_analysis_legacy",
+  "book_type": "Manuale (Non-Fiction)",
+  "keyword": "Keto diet",
+  "language": "Italiano",
+  "market": "USA",
+  "timestamp": "20250430_143735"
+}
+In base alle ricerche effettuate, ora procedo a sviluppare tre idee editoriali differenzianti per un nuovo libro sulla dieta Keto nel mercato statunitense, ciascuna con un approccio unico e indirizzata a un target specifico.
+1. ATHLETIC KETO: POWER YOUR MIND & BODY
+Angolo editoriale: Connessione tra dieta ketogenica, performance atletica e salute mentale.
+Approccio: Scientifico-pratico con un forte focus sulla visualizzazione. Combina basi scientifiche con casi studio, immagini prima/dopo, grafici sull'andamento delle prestazioni e testimonianze di atleti.
+Target specifico: Atleti amatoriali e professionisti (25-45 anni) che cercano non solo miglioramenti nelle prestazioni fisiche ma anche benefici cognitivi ed emotivi.
+USP sintetica: L'unico libro che integra la scienza della ketosi con protocolli specifici per ottimizzare simultaneamente prestazioni fisiche e salute mentale, includendo il "Targeted Keto Protocol" per massimizzare l'energia durante le competizioni.
+2. LAZY KETO REVOLUTION: SMART SHORTCUTS FOR BUSY FAMILIES
+Angolo editoriale: Semplificazione radicale dell'approccio keto per famiglie impegnate.
+Approccio: Estremamente pratico, visuale e orientato alle soluzioni. Ricette ultrarapide (meno di 15 minuti), piani settimanali, liste della spesa automatizzate, e un sistema a codice colore per identificare rapidamente le ricette in base al tempo disponibile.
+Target specifico: Genitori tra i 30 e 45 anni con poco tempo ma desiderosi di migliorare la salute familiare, in particolare nelle aree suburbane.
+USP sintetica: Il primo sistema keto che richiede solo 5 minuti di pianificazione settimanale e include strategie per coinvolgere tutta la famiglia, con 100+ ricette "stealth keto" che piacciono anche ai bambini più esigenti.
+3. KETO BEYOND YOUTH: LONGEVITY & COGNITIVE ENHANCEMENT AFTER 50
+Angolo editoriale: Dieta ketogenica come strumento di longevità e protezione cognitiva nella seconda metà della vita.
+Approccio: Teorico-pratico con forte componente educativa. Utilizzo di casi studio longitudinali, testimonianze, protocolli personalizzabili e una sezione interattiva con QR code per accedere a video dimostrativi e aggiornamenti di ricerca.
+Target specifico: Adulti over 50 preoccupati per il declino cognitivo e desiderosi di mantenere energia e vitalità. Particolarmente orientato verso professionisti con alto livello di istruzione.
+USP sintetica: L'unico programma keto specificamente formulato per supportare le funzioni cognitive e metaboliche dopo i 50 anni, basato sulle ultime ricerche di neurobiologia del 2025 e personalizzabile in base alle condizioni di salute preesistenti.

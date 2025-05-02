@@ -1,0 +1,94 @@
+{
+    "flow": {
+        "steps": {
+            "CM-1": {
+                "description": "Analisi di mercato - Fase 1",
+                "next": "CM-2"
+            },
+            "CM-2": {
+                "description": "Analisi di mercato - Fase 2",
+                "next": null
+            },
+            "CP-1": {
+                "description": "Content Production - Fase 1",
+                "next": "CP-2"
+            },
+            "CP-2": {
+                "description": "Content Production - Fase 2",
+                "next": null
+            },
+            "CPM-1": {
+                "description": "Content Promotion & Marketing - Fase 1",
+                "next": "CPM-2"
+            },
+            "CPM-2": {
+                "description": "Content Promotion & Marketing - Fase 2",
+                "next": "CPM-3"
+            },
+            "CPM-3": {
+                "description": "Content Promotion & Marketing - Fase 3",
+                "next": null
+            },
+            "CS-1": {
+                "description": "Content Strategy - Fase 1",
+                "next": "CS-2"
+            },
+            "CS-2": {
+                "description": "Content Strategy - Fase 2",
+                "next": "CS-3"
+            },
+            "CS-3": {
+                "description": "Content Strategy - Fase 3",
+                "next": "CS-F"
+            },
+            "CS-F": {
+                "description": "Content Strategy - Fase Finale",
+                "next": null
+            }
+        },
+        "start": "CM-1",
+        "default": "CM-1"
+    },
+    "extractors": {
+        "CM-1": {
+            "MARKET_INSIGHTS": "regex:MARKET_INSIGHTS:\\s*(.*?)(?=\\n[A-Z_]+:|$)",
+            "KEYWORD_DATA": "regex:KEYWORD_DATA:\\s*(.*?)(?=\\n[A-Z_]+:|$)",
+            "BESTSELLER_OVERVIEW": "regex:BESTSELLER_OVERVIEW:\\s*(.*?)(?=\\n[A-Z_]+:|$)"
+        },
+        "CM-2": {
+            "STRUCTURE_PATTERNS": "regex:STRUCTURE_PATTERNS:\\s*(.*?)(?=\\n[A-Z_]+:|$)",
+            "TITLE_PATTERNS": "regex:TITLE_PATTERNS:\\s*(.*?)(?=\\n[A-Z_]+:|$)",
+            "REVIEW_INSIGHTS": "regex:REVIEW_INSIGHTS:\\s*(.*?)(?=\\n[A-Z_]+:|$)",
+            "IMPLEMENTATION_OBSTACLES": "regex:IMPLEMENTATION_OBSTACLES:\\s*(.*?)(?=\\n[A-Z_]+:|$)",
+            "MARKET_GAPS": "regex:MARKET_GAPS:\\s*(.*?)(?=\\n[A-Z_]+:|$)"
+        },
+        "CS-1": {
+            "CONTENT_STRATEGY": "regex:CONTENT_STRATEGY:\\s*(.*?)(?=\\n[A-Z_]+:|$)"
+        },
+        "CS-2": {
+            "CONTENT_PILLARS": "regex:CONTENT_PILLARS:\\s*(.*?)(?=\\n[A-Z_]+:|$)"
+        },
+        "CS-3": {
+            "CONTENT_CALENDAR": "regex:CONTENT_CALENDAR:\\s*(.*?)(?=\\n[A-Z_]+:|$)"
+        },
+        "CS-F": {
+            "FINAL_STRATEGY": "regex:FINAL_STRATEGY:\\s*(.*?)(?=\\n[A-Z_]+:|$)"
+        },
+        "CP-1": {
+            "TITOLO_LIBRO": "regex:TITOLO_LIBRO:\\s*(.*?)(?=\\n[A-Z_]+:|$)",
+            "SOTTOTITOLO_LIBRO": "regex:SOTTOTITOLO_LIBRO:\\s*(.*?)(?=\\n[A-Z_]+:|$)"
+        },
+        "CP-2": {
+            "VOICE_STYLE": "regex:VOICE_STYLE:\\s*(.*?)(?=\\n[A-Z_]+:|$)"
+        },
+        "CPM-1": {
+            "MARKETING_STRATEGY": "regex:MARKETING_STRATEGY:\\s*(.*?)(?=\\n[A-Z_]+:|$)"
+        },
+        "CPM-2": {
+            "AD_COPY": "regex:AD_COPY:\\s*(.*?)(?=\\n[A-Z_]+:|$)"
+        },
+        "CPM-3": {
+            "LAUNCH_PLAN": "regex:LAUNCH_PLAN:\\s*(.*?)(?=\\n[A-Z_]+:|$)"
+        }
+    }
+}

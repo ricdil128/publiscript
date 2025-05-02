@@ -1,0 +1,8 @@
+=== BACKUP 20250426_190526 ===
+Metadata: {
+  "prompt_id": null,
+  "section_number": null,
+  "timestamp": "20250426_190526",
+  "has_terminator": false
+}
+3) **Analisi Top 3 libri concorrenti su Amazon.com per la candlestick trading bible nel mercato USA** - Indice (capitoli principali) e pattern ricorrenti di copertina (stile, palette). - Badge/bonus offerti (risorse aggiuntive, toolkit). - Prezzo di listino, titolo/sottotitolo, descrizione A+ (contenuti enhanced). - Rating medio e numero di recensioni. - Scrivi in Italiano ma titoli e kw nella lingua del USA. Concludi con la parola

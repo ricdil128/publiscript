@@ -1,0 +1,46 @@
+=== BACKUP 20250429_130444 ===
+Metadata: {
+  "type": "market_analysis_crisp",
+  "book_type": "Manuale (Non-Fiction)",
+  "keyword": "Excel 2025",
+  "language": "Italiano",
+  "market": "USA",
+  "timestamp": "20250429_130444"
+}
+[13:04:19.612] DEBUG_URL: Monitoraggio navigazione attivato per nuovo driver
+[13:04:19.612] Browser avviato: True
+[13:04:19.612] Tentativo di navigazione a Genspark...
+[13:04:19.612] Navigazione diretta alla pagina di chat...
+[13:04:19.612] DEBUG_URL: Navigazione a: https://genspark.ai
+[13:04:28.324] URL dopo navigazione: https://www.genspark.ai/
+[13:04:28.324] Reindirizzato a URL non di chat, provo approccio alternativo...
+[13:04:28.324] DEBUG_URL: Navigazione a: https://genspark.ai/
+[13:04:32.562] URL finale: https://www.genspark.ai/
+[13:04:32.563] DEBUG_URL: Verificando login...
+[13:04:35.590] DEBUG_URL: Risultato check_login: True
+[13:04:35.590] [13:04:18] Avvio connessione browser...
+[13:04:44.295] DEBUG: analysis_type_radio esiste: valore = CRISP
+[13:04:44.296] Errore nella verifica di analisi esistenti: no such column: v.name
+[13:04:44.297] Avvio analisi di mercato per: Excel 2025
+[13:04:44.298] DEBUG: Usando tipo di analisi salvato: CRISP
+[13:04:44.298] ℹ️ Modalità analisi selezionata: CRISP (use_crisp = True)
+[13:04:44.299] DEBUG - Stato dei checkbox CRISP:
+[13:04:44.299] DEBUG: Checkbox CRISP CM-1 ha value=True
+[13:04:44.299] DEBUG: Aggiunta fase CRISP CM-1
+[13:04:44.299] DEBUG: Checkbox CRISP CM-2 ha value=True
+[13:04:44.299] DEBUG: Aggiunta fase CRISP CM-2
+[13:04:44.299] DEBUG: Checkbox CRISP CM-3 ha value=True
+[13:04:44.299] DEBUG: Aggiunta fase CRISP CM-3
+[13:04:44.299] DEBUG: Checkbox CRISP CM-4 ha value=True
+[13:04:44.299] DEBUG: Aggiunta fase CRISP CM-4
+[13:04:44.299] DEBUG: Checkbox CRISP CM-5 ha value=True
+[13:04:44.299] DEBUG: Aggiunta fase CRISP CM-5
+[13:04:44.299] DEBUG: Checkbox CRISP CM-6 ha value=True
+[13:04:44.299] DEBUG: Aggiunta fase CRISP CM-6
+[13:04:44.300] DEBUG: Checkbox CRISP CM-7 ha value=True
+[13:04:44.300] DEBUG: Aggiunta fase CRISP CM-7
+[13:04:44.300] DEBUG: Checkbox CRISP CM-8 ha value=True
+[13:04:44.300] DEBUG: Aggiunta fase CRISP CM-8
+[13:04:44.300] 🔍 Fasi CRISP selezionate: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8
+[13:04:44.300] Avvio analisi CRISP 5.0 per: Excel 2025
+[13:04:44.300] 🔍 Esecuzione selettiva delle fasi CRISP: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8

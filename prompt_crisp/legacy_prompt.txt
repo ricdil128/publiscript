@@ -1,0 +1,45 @@
+------ METADATA ------
+ID: LM-1
+Fase: Analisi Legacy
+Versione: 1.0
+------ END METADATA ------
+
+------ VARIABLES ------
+keyword
+market
+amazon_url
+lingua
+------ END VARIABLES ------
+
+## 🧠 PROMPT LEGACY SPACCANICCHIA™ – 8 PUNTI (1 riga ciascuno)
+
+------ PROMPT ------
+1) Analizza la concorrenza su {amazon_url} per la keyword {keyword} nel mercato {market}: elenca i primi 5 risultati Amazon con titolo, sottotitolo, BSR, prezzo, recensioni, formato, keyword usate nei titoli, pattern visivi delle copertine (colori, stile, elementi ricorrenti), call to action e benefit promessi nei titoli o sottotitoli; aggiungi dati da Google Trends, query emergenti e insight dai social (es. video virali, reel, post rilevanti); includi anche eventuali “claim” ricorrenti o promesse implicite nei testi di vendita; concludi con una tabella di sintesi e un commento operativo su cosa domina, cosa manca, e quali pattern emergono; scrivi in {lingua}, titoli e keyword nella lingua del {market}; concludi con la parola FINE.
+---
+
+2) Valuta la profittabilità e competitività della keyword {keyword} su {amazon_url} nel mercato {market}: considera vendite mensili stimate per range di BSR, prezzo medio per ebook e cartaceo, royalty KDP stimate per formato, numero e qualità dei competitor (copertine, recensioni, struttura, USP), livello di saturazione e difficoltà stimata nel posizionarsi (forza dei top 5 titoli), segnala se sono self-published o con editore; includi 3 tabelle: “BSR vs Vendite e Margini”, “Top 5 Competitor”, “Analisi Competitività” con punteggi; concludi con 3 bullet: "Alta opportunità se…", "Moderata se…", "Bassa se…"; scrivi in {lingua}, titoli e keyword nella lingua del {market}; concludi con la parola FINE.
+
+---
+
+3) Analizza i 3 migliori concorrenti per la keyword {keyword} su {amazon_url} nel mercato {market}: mostra per ciascuno titolo, sottotitolo, BSR, recensioni, prezzo, formato, numero di pagine (se disponibile), struttura interna (indice o sezioni visibili), copertina (stile, colori, elementi distintivi), USP percepita, e bonus offerti (esercizi, checklist, link, QR code); includi una tabella comparativa con righe = libri e colonne: BSR, prezzo, recensioni, pagine, bonus, punto di forza percepito; concludi con insight su ciò che li rende forti e ripetuti pattern utili da superare; scrivi in {lingua}, titoli e keyword nella lingua del {market}; concludi con la parola FINE.
+
+---
+
+4) Definisci una buyer persona sintetica per {keyword} nel mercato {market}: includi età, professione, livello di istruzione (se rilevante), obiettivi specifici, problemi percepiti, livello di consapevolezza del problema e grado di urgenza nella ricerca di una soluzione; indica dove cerca soluzioni (es. YouTube, libri, social), completa con 3 bullet: "Cosa cerca", "Cosa teme", "Cosa sogna"; assegna un nome simbolico e aggiungi una frase tipo "Vorrei un libro che…", più una possibile frase Google-style che digiterebbe per cercare il libro; scrivi in {lingua}, titoli e keyword nella lingua del {market}; concludi con la parola FINE.
+
+---
+
+5) Identifica i principali gap nei libri esistenti su {amazon_url} per {keyword}: analizza recensioni negative (1★–2★) per evidenziare frustrazioni comuni, bisogni insoddisfatti, contenuti confusi o trattati superficialmente; indica almeno 3 aree tematiche mancanti o trascurate e il valore che avrebbero se inserite in un nuovo libro; specifica se si tratta di carenze pratiche (esempi, esercizi), strutturali (ordine, chiarezza), o valoriali (tono, empatia); concludi con una tabella “Gap vs Opportunità” con colonne: Problema segnalato, Frequenza, Opportunità editoriale; scrivi in {lingua}, titoli e keyword nella lingua del {market}; concludi con la parola FINE.
+
+---
+
+6) Genera 3 idee editoriali differenzianti per un nuovo libro su {keyword} nel mercato {market}: per ciascuna definisci titolo provvisorio, angolo editoriale, approccio (pratico, teorico, visuale…), target specifico e una USP sintetica (max 2 righe) che risponda ai bisogni emersi; includi una tabella comparativa con righe = idee e colonne: originalità, potenziale commerciale, compatibilità con la buyer persona, copertura dei gap, ognuna con voto da 1 a 5 stelle e punteggio totale finale; scegli la migliore idea e motiva la scelta sulla base del potenziale commerciale, dell'originalità, della compatibilità con la buyer persona e dei gap riscontrati; scrivi in {lingua}, titoli e keyword nella lingua del {market}; concludi con la parola FINE.
+
+---
+
+7)  Definisci il tono di voce, lo stile narrativo e la struttura ideale del testo per il libro basato sull’idea editoriale selezionata: specifica persona narrativa, registro, lessico, ritmo e livello di approfondimento, indicando le regole di coerenza stilistica (es. uso della terza persona, assenza di bullet non richiesti, paragrafi sviluppati in blocchi coesi); descrivi come devono essere strutturati apertura, sviluppo e conclusione di ogni capitolo, inclusa l’integrazione fluida di riferimenti storici, pratici e scientifici senza frammentazioni; includi 2–3 esempi di paragrafi scritti nello stile indicato da usare come modello per la stesura del libro; scrivi in {lingua}; concludi con la parola FINE.
+
+---
+
+8) In base all’idea selezionata, proponi 3 titoli con relativo sottotitolo (titolo + sottotitolo per ciascuna variante), valuta i titoli con punteggio da 1 a 5 stelle in base a chiarezza, potere evocativo, potenziale di vendita, pertinenza tematica e compatibilità con la buyer persona e i gap individuati; scegli il migliore e motiva la scelta, poi crea un bonus testuale in PDF coerente con il titolo scelto e utile alla buyer persona. Genera 3 idee di indice coerenti con il titolo selezionato, scegli e motiva la migliore, poi sviluppa l’indice completo del libro con tutti i capitoli necessari, basandoti anche sulla lunghezza media dei libri concorrenti. L’indice deve essere scritto su una riga per gruppo di sottocapitoli: se un capitolo ha 2–3 sottocapitoli, vanno tutti su una riga; se ha 4–6 sottocapitoli, vanno distribuiti in 2 righe; se ha 7 o più, vanno divisi in 3 righe o più. Non spezzare mai i paragrafi dal proprio sottocapitolo. Ogni riga dell’indice sarà un’unità editoriale da mandare in produzione. Infine, scrivi l’indice completo del bonus scelto; scrivi in {lingua}, titoli e keyword nella lingua del {market}; concludi con la parola FINE.
+------ END PROMPT ------

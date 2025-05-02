@@ -1,0 +1,8 @@
+=== BACKUP 20250426_191111 ===
+Metadata: {
+  "prompt_id": null,
+  "section_number": null,
+  "timestamp": "20250426_191111",
+  "has_terminator": false
+}
+ERRORE: Richiesta abortita ripetutamente

@@ -1,0 +1,17 @@
+=== BACKUP Analisi Legacy: Lsat - Lsat - 20250502_084326 ===
+Metadata: {
+  "type": "market_analysis_legacy",
+  "book_type": "Manuale (Non-Fiction)",
+  "keyword": "Lsat",
+  "language": "Italiano",
+  "market": "USA",
+  "timestamp": "20250502_084326"
+}
+Basandomi sulle informazioni raccolte, possiamo ora sviluppare tre idee editoriali differenzianti per un nuovo libro sull'LSAT nel mercato USA che rispondano ai bisogni emersi.
+Idea 1: "The Visual LSAT Blueprint: Master the 2025 Format Through Cognitive Mapping"
+Angolo editoriale: Un approccio innovativo che sfrutta le tecniche di apprendimento visivo per dominare il nuovo formato LSAT senza Logic Games, concentrandosi su mappe mentali e diagrammi per visualizzare e risolvere le sezioni di Logical Reasoning e Reading Comprehension.
+Approccio: Visuale e pratico, con un ampio uso di mappe cognitive, diagrammi colorati, schemi visivi e tecniche di rappresentazione grafica dei ragionamenti logici.
+Target specifico: Studenti con stile di apprendimento visivo (circa il 30-40% dei candidati) che faticano con i tradizionali metodi testuali, particolarmente adatto a chi ha un background in discipline artistiche, scienze, ingegneria o design e cerca un approccio alternativo alle spiegazioni puramente testuali.
+USP sintetica: L'unico libro LSAT che trasforma i concetti astratti di logical reasoning in rappresentazioni visive intuitive, rendendo accessibile il nuovo formato dell'esame anche a chi ha difficoltà con le spiegazioni puramente testuali, con un miglioramento medio di 7 punti documentato per gli studenti visivi.
+Idea 2: "LSAT Reset 2025: Strategic Adaptation for the Post-Logic Games Era"
+Angolo editoriale: Una guida completa orientata alla strategia che analizza il cambiamento strutturale nell'LSAT dopo l'eliminazione dei Logic Games, ride

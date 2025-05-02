@@ -1,0 +1,62 @@
+------ METADATA ------
+ID: CPM-3
+Fase: Marketing e Promozione
+Versione: 5.0
+------ END METADATA ------
+
+------ VARIABLES ------
+TITOLO_LIBRO
+KEYWORD
+ANGOLO_ATTACCO
+BUYER_PERSONA_SUMMARY
+IMPLEMENTATION_OBSTACLES
+BOOK_JOURNEY
+CONTENT_PILLARS
+PROPRIETARY_METHOD
+------ END VARIABLES ------
+
+Questo prompt sviluppa un sistema integrato di supporto post-acquisto per "{TITOLO_LIBRO}", combinando bonus strategici e sequenza email per massimizzare implementazione e soddisfazione.
+
+ISTRUZIONI GENERALI:
+- Rispondi in modo diretto e conciso a ciascuna domanda
+- Utilizza la parola FINE_RISPOSTA solo quando hai completato la risposta
+- Evita approfondimenti eccessivi non richiesti esplicitamente
+
+------ PROMPT ------
+1. STRATEGIA DEI BONUS: Definisci 3-4 principi fondamentali che guideranno la creazione dei bonus PDF, spiegando come ciascuno aumenterà sia il valore percepito che l'implementazione effettiva. Identifica il posizionamento strategico dei bonus rispetto al libro principale (estensione, implementazione, personalizzazione) e come supportano il {PROPRIETARY_METHOD}. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+2. BONUS CORE: Sviluppa 3 bonus PDF strategici, ciascuno mirato a una fase diversa del percorso in {BOOK_JOURNEY} e allineato con specifici {CONTENT_PILLARS}. Per ogni bonus, fornisci: titolo benefit-driven, descrizione concisa (100-150 parole), elementi principali inclusi, e spiegazione di come supera specifici ostacoli in {IMPLEMENTATION_OBSTACLES}. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+3. BONUS DIAGNOSTICO: Crea 1 bonus diagnostico/assessment che personalizza l'esperienza del lettore, specificando come aiuta a identificare il punto di partenza e guidare verso le soluzioni più appropriate nel libro. Delinea struttura, componenti e meccanismo di personalizzazione. Collega questo strumento al {PROPRIETARY_METHOD}. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+4. STRATEGIA EMAIL ESSENZIALE: Sviluppa una sequenza email in 3 fasi chiave: Onboarding (giorni 1-7), Implementazione (giorni 8-30), e Continuità (oltre 30 giorni). Per ciascuna fase, definisci: obiettivo principale, contenuti chiave collegati ai {CONTENT_PILLARS}, frequenza ottimale, e metriche di successo. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+5. EMAIL STRATEGICHE: Crea blueprint per le 5 email critiche della sequenza: benvenuto post-acquisto, consegna primo bonus, supporto primo ostacolo (basato su {IMPLEMENTATION_OBSTACLES}), check-in implementazione, e riattivazione/testimonianza. Per ciascuna, fornisci: oggetto efficace, hook di apertura, struttura del corpo, e call-to-action principale. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+6. SEGMENTAZIONE BASE: Identifica 2-3 punti chiave di segmentazione nella sequenza email basati su comportamento/interazione e collegati a specifici {CONTENT_PILLARS}. Per ciascun segmento possibile, definisci gli adattamenti principali nel messaggio e nel contenuto successivo. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+7. SISTEMA DI DELIVERY: Progetta un sistema logistico per la consegna dei bonus e delle email, specificando: meccanismo di opt-in, piattaforma tecnica consigliata, timing strategico per il rilascio dei bonus, e processo di onboarding che massimizza l'attivazione iniziale. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+8.1. BONUS_SYSTEM: Crea un documento sintetico che descrive i 4 bonus sviluppati, il loro posizionamento strategico e il valore che aggiungono, in 500-700 parole. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.  
+  
+---
+
+8.2. EMAIL_STRATEGY: Genera un piano dettagliato della sequenza email in 3 fasi con le 5 email chiave completamente delineate, pronte per l'implementazione. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.  
+  
+---
+
+------ END PROMPT ------

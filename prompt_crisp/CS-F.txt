@@ -1,0 +1,74 @@
+------ METADATA ------
+ID: CS-F
+Fase: Sintesi Finale
+Versione: 5.0
+------ END METADATA ------
+
+------ VARIABLES ------
+KEYWORD
+MERCATO
+MARKET_INSIGHTS
+STRUCTURE_PATTERNS
+TITLE_PATTERNS
+REVIEW_INSIGHTS
+IMPLEMENTATION_OBSTACLES
+MARKET_GAPS
+STRATEGIC_INSIGHTS
+BUYER_PERSONA_SUMMARY
+ONLINE_BEHAVIOR_INSIGHTS
+ANGOLO_ATTACCO
+PROMESSA_PRINCIPALE
+USP_ELEMENTS
+BOOK_JOURNEY
+BIG_IDEA
+CONTENT_PILLARS
+PROPRIETARY_METHOD
+TITOLO_LIBRO
+SOTTOTITOLO_LIBRO
+VOICE_STYLE
+MARKETING_CLAIMS
+HEADLINE_OPTIONS
+AMAZON_DESCRIPTION
+COVER_BRIEF
+VISUAL_ELEMENTS
+BONUS_SYSTEM
+EMAIL_STRATEGY
+------ END VARIABLES ------
+
+Questo prompt crea una sintesi completa e integrata di tutto il lavoro svolto durante il processo CRISP per il libro "{TITOLO_LIBRO}: {SOTTOTITOLO_LIBRO}" sulla keyword "{KEYWORD}" nel mercato {MERCATO}.
+
+ISTRUZIONI GENERALI:
+- Rispondi in modo diretto e conciso a ciascuna domanda
+- Utilizza la parola FINE_RISPOSTA solo quando hai completato la risposta
+- Evita approfondimenti eccessivi non richiesti esplicitamente
+
+------ PROMPT ------
+1. QUADRO STRATEGICO INTEGRATO: Crea una panoramica sintetica che integri i principali insight strategici dal processo completo, collegando {STRATEGIC_INSIGHTS}, {ANGOLO_ATTACCO}, {BIG_IDEA} e {PROMESSA_PRINCIPALE} in un quadro coerente che cattura l'essenza del progetto del libro. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+2. PROFILO TARGET DEFINITIVO: Sintetizza il profilo completo del lettore target, integrando {BUYER_PERSONA_SUMMARY}, {ONLINE_BEHAVIOR_INSIGHTS} e il modo in cui questo target si allinea con il posizionamento scelto {ANGOLO_ATTACCO} e i pilastri di contenuto {CONTENT_PILLARS}. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+3. BLUEPRINT DEL LIBRO: Presenta una visione unificata dell'architettura del libro, collegando {BOOK_JOURNEY}, {CONTENT_PILLARS}, {PROPRIETARY_METHOD} e {VOICE_STYLE} in un blueprint coeso che mostra come ogni elemento supporta gli altri nella creazione di un'esperienza di lettura efficace. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+4. IDENTITÀ DI BRAND INTEGRATA: Delinea l'identità completa del brand libro, combinando gli elementi verbali ({TITOLO_LIBRO}, {SOTTOTITOLO_LIBRO}, {MARKETING_CLAIMS}) con gli elementi visivi ({VISUAL_ELEMENTS}) in un'identità coerente e distintiva. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+5. ECOSISTEMA DI SUPPORTO: Illustra come {BONUS_SYSTEM} e {EMAIL_STRATEGY} si integrano con il libro principale per creare un ecosistema completo che massimizza il valore per il lettore e supporta l'implementazione in ogni fase. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+6. PRINCIPALI DIFFERENZIATORI: Identifica e sintetizza i 5-7 elementi più distintivi e differenzianti di questo progetto, basandoti su tutti i risultati precedenti, spiegando come ciascuno contribuisce al vantaggio competitivo complessivo del libro. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+7. INTEGRATED_SUMMARY: Genera un documento esaustivo (1200-1500 parole) che integra tutti gli elementi sviluppati durante il processo CRISP in una visione strategica unificata, presentando il progetto libro come un insieme coeso e strategicamente allineato, pronto per l'implementazione. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+------ END PROMPT ------

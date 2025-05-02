@@ -1,0 +1,86 @@
+{
+    "flow": {
+        "start": "LM-1",
+        "steps": {
+            "LM-1": {
+                "description": "Analisi concorrenza",
+                "next": "LM-2"
+            },
+            "LM-2": {
+                "description": "Valutazione profittabilità e competitività",
+                "next": "LM-3"
+            },
+            "LM-3": {
+                "description": "Analisi 3 migliori concorrenti",
+                "next": "LM-4"
+            },
+            "LM-4": {
+                "description": "Buyer persona sintetica",
+                "next": "LM-5"
+            },
+            "LM-5": {
+                "description": "Gap analysis",
+                "next": "LM-6"
+            },
+            "LM-6": {
+                "description": "Idee editoriali",
+                "next": "LM-7"
+            },
+            "LM-7": {
+                "description": "Valutazione idee",
+                "next": "LM-8"
+            },
+            "LM-8": {
+                "description": "Titoli, sottotitoli e indici",
+                "next": null
+            }
+        }
+    },
+    "extractors": {
+        "LM-1": {
+            "MARKET_ANALYSIS": "regex:Analisi della concorrenza[\\s\\S]*?(?=\\nFINE)",
+            "TOP_RESULTS": "regex:(?:i primi \\d+ risultati|risultati principali)[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "TREND_DATA": "regex:(?:Google Trends|dati di tendenza)[\\s\\S]*?(?=\\n\\n|\\nFINE)"
+        },
+        "LM-2": {
+            "PROFITABILITY": "regex:(?:profittabilità|opportunità)[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "COMPETITION_LEVEL": "regex:(?:competitività|livello di saturazione)[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "OPPORTUNITY_RATING": "regex:(?:Alta opportunità|Moderata|Bassa)[\\s\\S]*?(?=\\nFINE)"
+        },
+        "LM-3": {
+            "COMPETITOR_ANALYSIS": "regex:Analisi dei concorrenti[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "COMPETITOR_STRENGTHS": "regex:(?:punti di forza|elementi distintivi)[\\s\\S]*?(?=\\n\\n|\\nFINE)"
+        },
+        "LM-4": {
+            "BUYER_PERSONA_SUMMARY": "regex:(?:buyer persona|persona tipo)[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "BUYER_NEEDS": "regex:(?:Cosa cerca|Bisogni):[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "BUYER_FEARS": "regex:(?:Cosa teme|Paure|Timori):[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "BUYER_DREAMS": "regex:(?:Cosa sogna|Aspirazioni|Desideri):[\\s\\S]*?(?=\\n\\n|\\nFINE)"
+        },
+        "LM-5": {
+            "CRITICAL_GAPS": "regex:(?:gap|mancanze|lacune)[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "NEGATIVE_REVIEWS": "regex:(?:recensioni negative|critiche)[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "GAP_OPPORTUNITIES": "regex:(?:Gap vs Opportunità|Mancanze e possibilità)[\\s\\S]*?(?=\\nFINE)"
+        },
+        "LM-6": {
+            "EDITORIAL_IDEAS": "regex:(?:idee editoriali|proposte)[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "IDEA_1": "regex:(?:Idea 1|Prima proposta)[\\s\\S]*?(?=\\n(?:Idea|Proposta) 2|\\nFINE)",
+            "IDEA_2": "regex:(?:Idea 2|Seconda proposta)[\\s\\S]*?(?=\\n(?:Idea|Proposta) 3|\\nFINE)",
+            "IDEA_3": "regex:(?:Idea 3|Terza proposta)[\\s\\S]*?(?=\\n\\n|\\nFINE)"
+        },
+        "LM-7": {
+            "SELECTED_IDEA": "regex:(?:L'idea migliore|La scelta ottimale)[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "SELECTION_RATIONALE": "regex:(?:motivazioni|ragioni della scelta)[\\s\\S]*?(?=\\nFINE)"
+        },
+        "LM-8": {
+            "PROPOSED_TITLES": "regex:(?:Titoli proposti|Opzioni di titolo)[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "TITLE_1": "regex:(?:Titolo 1|Opzione 1):[\\s\\S]*?(?=\\n(?:Titolo|Opzione) 2|\\nFINE)",
+            "TITLE_2": "regex:(?:Titolo 2|Opzione 2):[\\s\\S]*?(?=\\n(?:Titolo|Opzione) 3|\\nFINE)",
+            "TITLE_3": "regex:(?:Titolo 3|Opzione 3):[\\s\\S]*?(?=\\n\\n|\\nFINE)",
+            "PROPOSED_INDICES": "regex:(?:Indici proposti|Strutture del libro)[\\s\\S]*?(?=\\nFINE)",
+            "INDEX_1": "regex:(?:Indice 1|Struttura 1):[\\s\\S]*?(?=\\n(?:Indice|Struttura) 2|\\nFINE)",
+            "INDEX_2": "regex:(?:Indice 2|Struttura 2):[\\s\\S]*?(?=\\n(?:Indice|Struttura) 3|\\nFINE)",
+            "INDEX_3": "regex:(?:Indice 3|Struttura 3):[\\s\\S]*?(?=\\n\\n|\\nFINE)"
+        }
+    }
+}

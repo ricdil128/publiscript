@@ -1,0 +1,327 @@
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\browser_manager.py:    if _browser_instance is not None:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\browser_manager.py:    print(f"DEBUG_BROWSER: Browser creato/recuperato: {result is not None}")
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\browser_manager.py:            if "chat" not in driver.current_url.lower() and "agents" not in driver.current_url.lower():
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\browser_manager.py:                if not upload_success:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:                if len(response) < 2000 or not success:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:        if not check_login(driver):
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:    if "genspark.ai" not in current_url and "/agents" not in current_url and "/chat" not in current_url:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:        if "genspark.ai" not in current_url:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:                if not inserted_text:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:                    if not response:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:                        if text and not ("errore" in text.lower() or 
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:        "I apologize, but I cannot",
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:        "As an AI assistant, I cannot",
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:        "I cannot comply with this request",
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:        "I cannot fulfill this request"
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:    if not response:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\genspark_driver.py:            if response and len(response) > 100 and "errore" not in response.lower():
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:                    if not value:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            "//*[contains(text(), '.') and not(ancestor::button) and not(ancestor::input)]")
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:        if not send_success:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:        while total_cycles < max_cycles and not response_complete and not request_aborted:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            while attempt < max_attempts and not response_complete and not request_aborted:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            if not response_complete:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            if "chat" not in driver.current_url.lower() and "agents" not in driver.current_url.lower():
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:                if not upload_success:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:                if hasattr(self, 'chat_manager'):
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            if hasattr(self, 'results_display') and response:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:                    if len(response) < 2000 or not success:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:        if not hasattr(self, 'driver') or self.driver is None:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            if not get_connection_status():
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            if not check_login(self.driver):
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:        if "genspark.ai" not in current_url and "/agents" not in current_url and "/chat" not in current_url:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:        if not hasattr(self, 'driver') or self.driver is None:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            if not get_connection_status():
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            if "genspark.ai" not in current_url:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:                    if not inserted_text:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:                        if not response:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:        if not hasattr(self, 'driver') or self.driver is None:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            if not get_connection_status():
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            if not check_login(self.driver):
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:        if "genspark.ai" not in current_url and "/agents" not in current_url and "/chat" not in current_url:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:        if not hasattr(self, 'driver') or self.driver is None:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            if not get_connection_status():
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:            if "genspark.ai" not in current_url:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:                    if not inserted_text:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:                        if not response:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\interaction_utils.py:    if not sections:
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\__init__.py:    builder = AIBookBuilder.get_instance() if hasattr(AIBookBuilder, 'get_instance') else None
+C:\Users\a\Documents\PubliScript_Refactored\ai_interfaces\__init__.py:        if not input_box:
+C:\Users\a\Documents\PubliScript_Refactored\db_check.py:if not os.path.exists(db_path):
+C:\Users\a\Documents\PubliScript_Refactored\db_check.py:        col_id, col_name, col_type, not_null, default_val, pk = col
+C:\Users\a\Documents\PubliScript_Refactored\db_check.py:        not_null_text = " NOT NULL" if not_null else ""
+C:\Users\a\Documents\PubliScript_Refactored\db_check.py:        print(f"  - {col_name} ({col_type}){primary_key}{not_null_text}{default_text}")
+C:\Users\a\Documents\PubliScript_Refactored\debug_console.py:    if not os.path.exists(context_file):
+C:\Users\a\Documents\PubliScript_Refactored\find_aibook_builder.py:    if not files:
+C:\Users\a\Documents\PubliScript_Refactored\find_unbalanced_parentheses.py:            if not stack_triple_quote:  # Apertura stringa
+C:\Users\a\Documents\PubliScript_Refactored\find_unbalanced_parentheses.py:                if not stack_triple_quote:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:    if "MARKET_INSIGHTS" not in data or not data["MARKET_INSIGHTS"]:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:    if "BESTSELLER_OVERVIEW" not in data or not data["BESTSELLER_OVERVIEW"]:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:                if not numbered_sections:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:                    if "FINE_RISPOSTA" not in response:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:        if not markets:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:                if current_section and current_number is not None:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:        if current_section and current_number is not None:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:        if not filtered_sections:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:        if not driver:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:        if not crisp_framework:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:            if not set(selected_phases).issubset(set(all_phases)):
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:            if not result.get('success'):
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:        if chat_manager and hasattr(chat_manager, 'save_context_data'):
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:        if not driver:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:        if hasattr(chat_manager, 'send_to_genspark'):
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:    if not selected_phases:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:        if not isinstance(selected_phases, list):
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:        if not section_matches:
+C:\Users\a\Documents\PubliScript_Refactored\framework\analysis\market_analysis.py:        if not filtered_sections:
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:        if not book_title.strip():
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:        if not book_index.strip():
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:        if not project_id:
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:            elif not any(keyword.lower() in line.lower() for keyword in ['introduzione', 'introduction', 'conclusione', 'conclusion']):
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:        if not filtered_chapters:
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:        if not has_intro:
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:                if not chapter_content:
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:        if not has_conclusion:
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:        if not book_title.strip():
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:        if not book_index.strip():
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:    if not book_title.strip():
+C:\Users\a\Documents\PubliScript_Refactored\framework\book_generator.py:    if not book_index.strip():
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_extractors.py:    if not response_text:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_extractors.py:    if not has_end:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_extractors.py:                if var not in extracted_data or not extracted_data[var]:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_extractors.py:        if not opening_examples:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_extractors.py:        if not terms:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_extractors.py:        if f'COMPETITOR{i}' not in data:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            CREATE TABLE IF NOT EXISTS projects (
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:                name TEXT NOT NULL,
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            CREATE TABLE IF NOT EXISTS project_variables (
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            CREATE TABLE IF NOT EXISTS project_results (
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            CREATE TABLE IF NOT EXISTS incremental_responses (
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            CREATE TABLE IF NOT EXISTS prompt_responses (
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:        if not self.project_db_path:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            if not cursor.fetchone():
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            if not cursor.fetchone():
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            if not cursor.fetchone():
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            if not cursor.fetchone():
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:                if var not in project_data:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            if not numbered_sections:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:                if "MARKET_INSIGHTS" not in extracted_data:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:                if "BESTSELLER_OVERVIEW" not in extracted_data:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:                if "KEYWORD_DATA" not in extracted_data:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:                if "MARKET_INSIGHTS" not in extracted_data or not extracted_data["MARKET_INSIGHTS"]:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:                if "BESTSELLER_OVERVIEW" not in extracted_data or not extracted_data["BESTSELLER_OVERVIEW"]:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:                if "KEYWORD_DATA" not in extracted_data or not extracted_data["KEYWORD_DATA"]:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:        if "PROJECT_ID" not in project_data:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:                    if not isinstance(var_value, str):
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:        if not self.project_db_path:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            if step_id and not re.match(r'^[A-Z]+-\d+$|^[A-Z]+-[A-Z]$', step_id):
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:        if not self.project_db_path:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:                    if not isinstance(var_value, str):
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:        if not self.project_db_path:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            if not project_info:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:        if not self.project_db_path:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:            if not project_info:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:        WHERE project_id = ? AND NOT (prompt_id = ? AND section_number = 6)
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:        WHERE project_id = ? AND NOT (prompt_id = ? AND section_number = 6)
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:    if hasattr(self, 'flow_map') and prompt_id in self.flow_map:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_framework.py:        missing_vars = [var for var in required_vars if var not in project_data]
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_utils.py:            if "------ METADATA ------" not in content:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_utils.py:        if "------ METADATA ------" not in content:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_utils.py:                    if not "----- METADATA -----" in direct_content:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_utils.py:    raise FileNotFoundError(f"Nessun file trovato per prompt ID {prompt_id}")
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_utils.py:    if not variables:
+C:\Users\a\Documents\PubliScript_Refactored\framework\crisp_utils.py:    if not prompt_text:
+C:\Users\a\Documents\PubliScript_Refactored\framework\formatters.py:    if not text:
+C:\Users\a\Documents\PubliScript_Refactored\framework\formatters.py:    if not content:
+C:\Users\a\Documents\PubliScript_Refactored\framework\formatters.py:    if not items:
+C:\Users\a\Documents\PubliScript_Refactored\framework\formatters.py:    if not content:
+C:\Users\a\Documents\PubliScript_Refactored\framework\formatters.py:    if not patterns:
+C:\Users\a\Documents\PubliScript_Refactored\framework\formatters.py:    if not content or '|' not in content:
+C:\Users\a\Documents\PubliScript_Refactored\mappa_codici_duplicati.py:        if not os.path.exists(self.project_root):
+C:\Users\a\Documents\PubliScript_Refactored\mappa_codici_duplicati.py:            if hasattr(child, 'lineno'):
+C:\Users\a\Documents\PubliScript_Refactored\mappa_codici_duplicati.py:        if method_name not in self.method_calls:
+C:\Users\a\Documents\PubliScript_Refactored\mappa_codici_duplicati.py:        if not self.python_files:
+C:\Users\a\Documents\PubliScript_Refactored\mappa_codici_duplicati.py:        if not self.python_files:
+C:\Users\a\Documents\PubliScript_Refactored\mappa_codici_duplicati.py:    if not mapper.python_files:
+C:\Users\a\Documents\PubliScript_Refactored\test_builder_inspect.py:print(f"Metodi pubblici: {[m for m in dir(AIBookBuilder) if not m.startswith('_')]}")
+C:\Users\a\Documents\PubliScript_Refactored\test_builder_inspect.py:    print(f"Metodi pubblici istanza: {[m for m in dir(builder) if not m.startswith('_')]}")
+C:\Users\a\Documents\PubliScript_Refactored\test_builder_inspect.py:print(f"hasattr(builder, 'create_interface'): {hasattr(builder, 'create_interface')}")
+C:\Users\a\Documents\PubliScript_Refactored\test_create_interface.py:if not os.path.exists(file_path):
+C:\Users\a\Documents\PubliScript_Refactored\test_create_interface.py:if create_interface_line is not None:
+C:\Users\a\Documents\PubliScript_Refactored\test_database_ui.py:        if not self.verify_db_exists():
+C:\Users\a\Documents\PubliScript_Refactored\test_database_ui.py:        if not self.verify_db_exists():
+C:\Users\a\Documents\PubliScript_Refactored\test_file_content.py:if not os.path.exists(file_path):
+C:\Users\a\Documents\PubliScript_Refactored\test_import.py:print(f"Metodi disponibili: {[m for m in dir(builder) if not m.startswith('_')]}")C:\Users\a\Documents\PubliScript_Refactored\test_results_display.py:            if not hasattr(self, 'log_history'):
+C:\Users\a\Documents\PubliScript_Refactored\test_results_display.py:            if not os.path.exists("context.txt"):
+C:\Users\a\Documents\PubliScript_Refactored\test_results_display.py:            if not os.path.exists(context_file):
+C:\Users\a\Documents\PubliScript_Refactored\test_results_display.py:                if hasattr(self, 'results_display'):
+C:\Users\a\Documents\PubliScript_Refactored\test_results_display.py:            if not context_content.strip():
+C:\Users\a\Documents\PubliScript_Refactored\test_results_display.py:                if hasattr(self, 'results_display'):
+C:\Users\a\Documents\PubliScript_Refactored\test_results_display.py:            if hasattr(self, 'results_display'):
+C:\Users\a\Documents\PubliScript_Refactored\test_results_display.py:            if hasattr(self, 'analysis_status'):
+C:\Users\a\Documents\PubliScript_Refactored\test_results_display.py:        if not os.path.exists("context.txt"):
+C:\Users\a\Documents\PubliScript_Refactored\test_visualizzazione.py:        if not os.path.exists(context_file):
+C:\Users\a\Documents\PubliScript_Refactored\test_visualizzazione.py:        if not os.path.exists(context_file):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not project_data:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not selected_phases:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if hasattr(self, 'projects_list') and self.projects_list is not None:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if not hasattr(self, '_get_patched') or not self._get_patched:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if "/chat" not in current_url.lower():
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            self.add_log(f"Browser avviato: {self.driver is not None}")
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if "/chat" not in current_url.lower():
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not login_result:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if not hasattr(self, 'driver') or self.driver is None:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if not hasattr(self, 'driver') or self.driver is None:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not ("genspark.ai" in current_url and ("/chat" in current_url or "/agents" in current_url)):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    while section_retry_count < max_section_retries and not section_success:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                            if not input_box:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                            if not inserted_text:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                            if not send_success:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                if len(response_text) < 50 and not ("CM-1" in prompt_id_to_use and i == 0):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                    if hasattr(self.crisp, 'save_incremental_response') and project_data and "PROJECT_ID" in project_data:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                    elif hasattr(self.crisp, 'crisp') and hasattr(self.crisp.crisp, 'save_incremental_response') and project_data and "PROJECT_ID" in project_data:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                        print(f"DEBUG: - hasattr(self.crisp, 'save_incremental_response'): {hasattr(self.crisp, 'save_incremental_response')}")
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                        print(f"DEBUG: - project_data is not None: {project_data is not None}")
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                        if hasattr(self, 'chat_manager'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                    if hasattr(self.crisp, 'save_incremental_response') and project_data and "PROJECT_ID" in project_data:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if not project_data or "PROJECT_ID" not in project_data:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self.chat_manager, 'context_file'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    if not os.path.exists(context_filename) and os.path.exists("context.txt"):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if hasattr(self.crisp, 'save_incremental_response'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            elif hasattr(self.crisp, 'crisp') and hasattr(self.crisp.crisp, 'save_incremental_response'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if result is None and hasattr(self, 'chat_manager'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    /* Notifica l'utente della scelta */
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    /* Aggiungi la notifica alla pagina */
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    if hasattr(self, 'results_display'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                        if hasattr(self.results_display, 'update'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not get_connection_status() or not self.driver:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not hasattr(self, 'question_status'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if hasattr(self, 'analysis_type_radio') and hasattr(self.analysis_type_radio, 'value'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    if hasattr(checkbox, 'value') and checkbox.value:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    if hasattr(checkbox, 'value') and checkbox.value:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not selected_phases:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    context = self.current_analysis.get('project_data', {}) if hasattr(self, 'current_analysis') else {}
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    if hasattr(self, 'chat_manager'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'format_analysis_results_html') and hasattr(self, 'results_display'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                        context = self.current_analysis.get('project_data', {}) if hasattr(self, 'current_analysis') else {}
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    if hasattr(self, 'chat_manager'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'question_status') and self.question_status:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    failed_questions = [qnum for qnum, status in self.question_status.items() if not status['success']]
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'analysis_status'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'results_display') and hasattr(self, 'analysis_status'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            analysis_status=self.analysis_status if hasattr(self, 'analysis_status') else None,
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            results_display=self.results_display if hasattr(self, 'results_display') else None,
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if hasattr(self, 'use_crisp') and self.use_crisp and hasattr(self, 'current_analysis') and self.current_analysis.get('crisp_project_id'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not response:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not project_id:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not execution_history:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if hasattr(self, 'current_analysis'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not hasattr(self, 'current_analysis') or self.current_analysis is None:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            use_crisp = hasattr(self, 'use_crisp') and self.use_crisp
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if use_crisp and hasattr(self, 'current_analysis') and self.current_analysis.get('crisp_project_id'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if not project_id:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                        if hasattr(self, 'crisp') and hasattr(self.crisp, 'get_project_data'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                            if hasattr(self, 'crisp'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                print(f"DEBUG-CRISP: hasattr(self.crisp, 'get_project_data'): {hasattr(self.crisp, 'get_project_data')}")
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                methods = [method for method in dir(self.crisp) if not method.startswith('_')]
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                if not pillars:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                            if 10 <= len(line) <= 100 and line[0].isupper() and ":" not in line and line.endswith((".","?")):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                            if not alternative_found:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                if not book_title_value:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                                if 10 <= len(line) <= 100 and not any(char in line for char in ['{', '}', '(', ')', '[', ']']):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                if not book_index_value:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                if not voice_style_value:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                if not book_type_value:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not book_title_value:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not book_index_value:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not voice_style_value:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not book_type_value:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                gradio_version = gr.__version__ if hasattr(gr, '__version__') else "sconosciuta"
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    'book_title': hasattr(self, 'book_title'),
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    'book_index': hasattr(self, 'book_index'),
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    'voice_style': hasattr(self, 'voice_style'),
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    'book_type_hidden': hasattr(self, 'book_type_hidden'),
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    'tabs': hasattr(self, 'tabs')
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'book_title'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'book_index'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'voice_style'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'book_type_hidden'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'tabs'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'book_title'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    if hasattr(self, 'book_title'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    if hasattr(self, 'book_index'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'current_analysis') and self.current_analysis:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if not keyword and book_title_value:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                            if hasattr(self, 'current_analysis') and self.current_analysis:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                                    if key not in main_vars and value:  # Evita duplicati
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                            if hasattr(self.chat_manager, 'context_file') and os.path.exists(self.chat_manager.context_file):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not project_id:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if hasattr(self, 'book_title') and 'TITOLO_LIBRO' in project_data:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if hasattr(self, 'book_language') and 'LINGUA' in project_data:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if hasattr(self, 'voice_style') and 'VOICE_STYLE' in project_data:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if hasattr(self, 'book_index') and 'CONTENT_PILLARS' in project_data:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if hasattr(self, 'book_details'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    if not existing:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    if not keyword and titoli_options:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if not titoli_options:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if not indici_options:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'book_title'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'book_index'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'voice_style'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'book_title'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'book_index'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'voice_style'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if title_id is not None:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if index_id is not None:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if result and not result.startswith("Errore:"):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if hasattr(self, 'book_type_hidden'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not self.driver:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not os.path.exists(context_file):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'results_display'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not context_content.strip():
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'results_display'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if hasattr(self, 'results_display'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if hasattr(self, 'analysis_status'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if not same_object:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                    if hasattr(self, 'analysis_status'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            keyword = self.get_current_keyword() if hasattr(self, 'get_current_keyword') else "unknown"
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not os.path.exists(context_file):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:                if not os.path.exists(context_file):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not docx_path:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not os.path.exists(context_file):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            keyword = self.get_current_keyword() if hasattr(self, 'get_current_keyword') else "unknown"
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if hasattr(self, 'results_display') and hasattr(self, 'analysis_status'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if not os.path.exists(context_file):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if hasattr(self, 'keyword') and hasattr(self.keyword, 'value'):
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:            if hasattr(self, 'current_analysis') and self.current_analysis:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if hasattr(self, 'driver') and self.driver:
+C:\Users\a\Documents\PubliScript_Refactored\ui\book_builder.py:        if hasattr(self, 'driver') and self.driver:
+C:\Users\a\Documents\PubliScript_Refactored\ui\chat_manager.py:        if not response:
+C:\Users\a\Documents\PubliScript_Refactored\ui\chat_manager.py:        if not os.path.exists(self.context_file):
+C:\Users\a\Documents\PubliScript_Refactored\ui\chat_manager.py:        if not self.backup_dir.exists():
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not self.project_ids_by_index:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not project_id:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:                    if not project_data:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not start_from_phase:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:                    if not completed_phases:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:                    if not valid_phases:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not project_id:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not os.path.exists(self.project_db_path):
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not projects:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not self.project_ids_by_index:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not project_id:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not project_base:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:        if not os.path.exists(db_path):
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            missing_tables = [table for table in required_tables if table not in tables]
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:                    CREATE TABLE IF NOT EXISTS projects (
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:                    CREATE TABLE IF NOT EXISTS project_variables (
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:                    CREATE TABLE IF NOT EXISTS project_results (
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:                    CREATE TABLE IF NOT EXISTS incremental_responses (
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:                if existing_tables is None or table_name not in existing_tables:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not self.project_ids_by_index:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not project_id:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not project_base:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:        if not project_display_name or project_display_name not in self.projects_data:
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not os.path.exists(self.project_db_path):
+C:\Users\a\Documents\PubliScript_Refactored\ui\database_manager.py:            if not keyword:
+C:\Users\a\Documents\PubliScript_Refactored\ui\interface_utils.py:            if progress_percentage is not None:

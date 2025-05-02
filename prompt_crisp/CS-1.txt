@@ -1,0 +1,56 @@
+------ METADATA ------
+ID: CS-1
+Fase: Strategia di Posizionamento
+Versione: 5.0
+------ END METADATA ------
+
+------ VARIABLES ------
+KEYWORD
+MERCATO
+MARKET_INSIGHTS
+KEYWORD_DATA
+BESTSELLER_OVERVIEW
+STRUCTURE_PATTERNS
+TITLE_PATTERNS
+REVIEW_INSIGHTS
+MARKET_GAPS
+IMPLEMENTATION_OBSTACLES
+------ END VARIABLES ------
+
+Questo prompt trasforma i dati raccolti nella fase analitica in insight strategici che guideranno le decisioni di posizionamento per il libro sulla keyword "{KEYWORD}" nel mercato {MERCATO}.
+
+ISTRUZIONI GENERALI:
+- Rispondi in modo diretto e conciso a ciascuna domanda
+- Utilizza la parola FINE_RISPOSTA solo quando hai completato la risposta
+- Evita approfondimenti eccessivi non richiesti esplicitamente
+
+------ PROMPT ------
+1. INTERPRETAZIONE DEL MERCATO: Analizza {MARKET_INSIGHTS} e {KEYWORD_DATA} per identificare le 3 implicazioni strategiche più significative, valutando quali aspetti del mercato offrono le migliori opportunità di ingresso e differenziazione per un nuovo libro. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+2. OPPORTUNITÀ COMPETITIVE: Basandoti su {REVIEW_INSIGHTS}, identifica i 3 bisogni critici non adeguatamente soddisfatti dai bestseller attuali; per ciascuno, spiega come potrebbe essere affrontato in modo più efficace. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+3. VALORE STRUTTURALE: Partendo da {STRUCTURE_PATTERNS}, identifica quali elementi strutturali dovrebbero essere mantenuti per soddisfare le aspettative di base dei lettori e quali potrebbero essere innovati per offrire un valore distintivo. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+4. DIRETTRICI DI TITOLAZIONE: Da {TITLE_PATTERNS}, estrai 3 approcci strategici per sviluppare un titolo efficace, analizzando quali elementi sembrano generare maggiore interesse e engagement nella specifica nicchia di "{KEYWORD}".Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+5. STRATEGIE ANTI-FALLIMENTO: Basandoti su {REVIEW_INSIGHTS} e {IMPLEMENTATION_OBSTACLES}, identifica 3 strategie concrete per evitare le criticità più comuni e superare gli ostacoli all'implementazione che hanno penalizzato i competitor. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+6. OPPORTUNITÀ PRIORITARIE: Analizza {MARKET_GAPS} per identificare le 3 opportunità più strategiche per questo specifico libro, considerando l'allineamento con il potenziale posizionamento e la fattibilità di realizzazione.Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+7. DEFINIZIONE DEGLI OUTPUT: Al termine di questa analisi, fornisci STRATEGIC_INSIGHTS, un documento sintetico (700-900 parole) che integra le considerazioni strategiche in una roadmap decisionale coesa, identificando chiaramente: opportunità di mercato prioritarie, bisogni critici da soddisfare, approccio strutturale raccomandato, e potenziali direzioni di posizionamento per la fase successiva. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.
+  
+---
+
+------ END PROMPT ------

@@ -1,0 +1,30 @@
+=== BACKUP 20250428_233427 ===
+Metadata: {
+  "type": "market_analysis_crisp",
+  "book_type": "Manuale (Non-Fiction)",
+  "keyword": "Excel 2025",
+  "language": "Italiano",
+  "market": "USA",
+  "timestamp": "20250428_233427"
+}
+[23:33:51.088] DEBUG_URL: Monitoraggio navigazione attivato per nuovo driver
+[23:33:51.088] Browser avviato: True
+[23:33:51.089] Tentativo di navigazione a Genspark...
+[23:33:51.089] Navigazione diretta alla pagina di chat...
+[23:33:51.089] DEBUG_URL: Navigazione a: https://genspark.ai
+[23:33:59.794] URL dopo navigazione: https://www.genspark.ai/
+[23:33:59.794] Reindirizzato a URL non di chat, provo approccio alternativo...
+[23:33:59.794] DEBUG_URL: Navigazione a: https://genspark.ai/
+[23:34:03.338] URL finale: https://www.genspark.ai/
+[23:34:03.339] DEBUG_URL: Verificando login...
+[23:34:06.391] DEBUG_URL: Risultato check_login: True
+[23:34:06.391] [23:33:49] Avvio connessione browser...
+[23:34:27.738] DEBUG: analysis_type_radio non esiste!
+[23:34:27.739] Errore nella verifica di analisi esistenti: no such column: v.name
+[23:34:27.739] Avvio analisi di mercato per: Excel 2025
+[23:34:27.740] DEBUG: Prima del controllo, analysis_type = CRISP
+[23:34:27.740] DEBUG: Radio button NON trovato!
+[23:34:27.740] ℹ️ Modalità analisi selezionata: CRISP (use_crisp = True)
+[23:34:27.740] 🔍 Fasi CRISP selezionate: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8
+[23:34:27.741] Avvio analisi CRISP 5.0 per: Excel 2025
+[23:34:27.741] 🔍 Esecuzione selettiva delle fasi CRISP: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8

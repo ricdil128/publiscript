@@ -1,0 +1,63 @@
+------ METADATA ------
+ID: CP-2
+Fase: Sviluppo del Prodotto
+Versione: 5.0
+------ END METADATA ------
+
+------ VARIABLES ------
+KEYWORD
+ANGOLO_ATTACCO
+BUYER_PERSONA_SUMMARY
+ONLINE_BEHAVIOR_INSIGHTS
+TITLE_PATTERNS
+PROMESSA_PRINCIPALE
+BIG_IDEA
+BOOK_JOURNEY
+CONTENT_PILLARS
+------ END VARIABLES ------
+
+Questo prompt sviluppa un titolo efficace e uno stile narrativo coerente per il libro su "{KEYWORD}", creando un'identità comunicativa impattante e allineata con tutti gli elementi strategici precedenti.
+
+ISTRUZIONI GENERALI:
+- Rispondi in modo diretto e conciso a ciascuna domanda
+- Utilizza la parola FINE_RISPOSTA solo quando hai completato la risposta
+- Evita approfondimenti eccessivi non richiesti esplicitamente
+
+------ PROMPT ------
+1. ELEMENTI CHIAVE PER IL TITOLO: Identifica 5-7 keyword/frasi essenziali che dovrebbero essere considerate per titolo/sottotitolo, basandoti su {TITLE_PATTERNS}, {ONLINE_BEHAVIOR_INSIGHTS} e {ANGOLO_ATTACCO}. Per ciascuna, valuta la rilevanza strategica e il potenziale di risonanza con la buyer persona. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+2. SVILUPPO TITOLI POTENZIALI: Crea 3 diverse direzioni di titolazione: una focalizzata sul beneficio principale, una sull'intrigo/curiosità, e una sull'identità/trasformazione. Per ciascuna, proponi un titolo principale e sottotitolo complementare che amplifichi il posizionamento in {ANGOLO_ATTACCO} e rifletta i {CONTENT_PILLARS}. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+3. VALUTAZIONE E SELEZIONE: Valuta i 3 set di titoli in base a: allineamento con {ANGOLO_ATTACCO}, risonanza con {BUYER_PERSONA_SUMMARY}, unicità nel mercato, e potenziale SEO/ricercabilità. Seleziona e perfeziona la combinazione titolo/sottotitolo ottimale, fornendo una giustificazione strategica per la scelta. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+4. PERSONALITÀ NARRATIVA: Identifica la voce autoriale più efficace per questo libro (es. mentore, innovatore, coach), spiegando perché si allinea con {ANGOLO_ATTACCO} e risuona con {BUYER_PERSONA_SUMMARY}. Delinea 3-4 caratteristiche distintive di questa voce narrativa collegandole a {BIG_IDEA} e {CONTENT_PILLARS}. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+5. ELEMENTI STILISTICI: Definisci i parametri stilistici chiave: livello di formalità (1-10), lunghezza media ideale delle frasi, approccio al vocabolario tecnico vs semplificato, e uso strategico di elementi retorici (domande, imperativi, metafore). Collega queste scelte a {ONLINE_BEHAVIOR_INSIGHTS}. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+6. ESEMPI APPLICATIVI: Fornisci 3 esempi concreti di scrittura che illustrano lo stile definito: un'apertura di capitolo che cattura l'attenzione, una transizione che collega teoria a pratica, e una conclusione con call-to-action. Mostra come questi supportano le diverse fasi di {BOOK_JOURNEY}. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+7.1. TITOLO_LIBRO: Scrivi il titolo definitivo scelto, conciso e d'impatto. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA. 
+  
+---
+
+7.2. SOTTOTITOLO_LIBRO: Costruisci il sottotitolo che completa e amplifica il titolo principale. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA. 
+  
+---
+
+7.3. VOICE_STYLE: sintetizza in 5-7 punti la personalità narrativa, tono, livello di formalità e elementi stilistici chiave che definiranno la voce del libro. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA. 
+  
+---
+
+------ END PROMPT ------

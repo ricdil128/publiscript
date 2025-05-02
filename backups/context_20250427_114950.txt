@@ -1,0 +1,8 @@
+=== BACKUP 20250427_114950 ===
+Metadata: {
+  "prompt_id": null,
+  "section_number": null,
+  "timestamp": "20250427_114950",
+  "has_terminator": false
+}
+Richiesta abortita

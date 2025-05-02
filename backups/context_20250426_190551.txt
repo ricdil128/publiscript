@@ -1,0 +1,8 @@
+=== BACKUP 20250426_190551 ===
+Metadata: {
+  "prompt_id": null,
+  "section_number": null,
+  "timestamp": "20250426_190551",
+  "has_terminator": false
+}
+4) **Buyer Persona lampo per il mercato USA e la kw candlestick trading bible** - Profilo demografico e psicografico essenziale. - 3 bullet su bisogni chiave, paure/frustrazioni e speranze/ambizioni. - Scrivi in Italiano ma titoli e kw nella lingua del USA. Concludi con la parola

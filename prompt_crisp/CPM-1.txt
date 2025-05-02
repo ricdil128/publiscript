@@ -1,0 +1,64 @@
+------ METADATA ------
+ID: CPM-1
+Fase: Marketing e Promozione
+Versione: 5.0
+------ END METADATA ------
+
+------ VARIABLES ------
+TITOLO_LIBRO
+SOTTOTITOLO_LIBRO
+KEYWORD
+MERCATO
+ANGOLO_ATTACCO
+BUYER_PERSONA_SUMMARY
+PROMESSA_PRINCIPALE
+ONLINE_BEHAVIOR_INSIGHTS
+REVIEW_INSIGHTS
+CONTENT_PILLARS
+------ END VARIABLES ------
+
+Questo prompt sviluppa una strategia di marketing integrata per il libro "{TITOLO_LIBRO}: {SOTTOTITOLO_LIBRO}", ottimizzando messaggistica persuasiva e presenza su Amazon.
+
+ISTRUZIONI GENERALI:
+- Rispondi in modo diretto e conciso a ciascuna domanda
+- Utilizza la parola FINE_RISPOSTA solo quando hai completato la risposta
+- Evita approfondimenti eccessivi non richiesti esplicitamente
+
+------ PROMPT ------
+1. HEADLINE E HOOK: Sviluppa 5 headline ad alto impatto (3-7 parole ciascuna) e 3 hook conversazionali (1-2 frasi) che catturano l'essenza di "{ANGOLO_ATTACCO}" e risuonano con {BUYER_PERSONA_SUMMARY}. Assicurati che riflettano i {CONTENT_PILLARS} e per ciascuna opzione, identifica il trigger emotivo principale attivato. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+2. FRAMEWORK PERSUASIVO: Crea un set di claim strategici: 3 claim logici basati su fatti/risultati, 3 claim emotivi che affrontano paure/desideri, e 3 claim identitari che parlano all'aspirazione del lettore. Organizzali in una progressione psicologica coerente che supporti la {PROMESSA_PRINCIPALE}. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+3. NEUTRALIZZAZIONE OBIEZIONI: Identifica le 3 obiezioni principali che potenziali acquirenti potrebbero avere, basandoti su {REVIEW_INSIGHTS}. Per ciascuna, sviluppa una risposta che la neutralizza e un reframe che la trasforma in vantaggio, collegandola ai {CONTENT_PILLARS} pertinenti. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+4. DESCRIZIONE AMAZON OTTIMIZZATA: Crea una struttura strategica per la pagina Amazon che includa: hook di apertura basato su domanda/statistica/scenario, articolazione del problema con validazione, presentazione della soluzione con differenziazione, 5 bullet points dei benefici chiave (uno per ciascun pilastro di contenuto), e call-to-action conclusivo con urgenza. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+5. STRATEGIA SEO: Identifica 5 keyword strategiche per ottimizzare la visibilità di "{TITOLO_LIBRO}" su Amazon, includendo la keyword principale "{KEYWORD}" e varianti rilevanti. Per ciascuna, indica dove dovrebbe essere posizionata (titolo, sottotitolo, descrizione, metadati). Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+6. ELEMENTI VISIVI E FORMATTAZIONE: Specifica gli elementi di formattazione strategici per la descrizione Amazon: parole/frasi da evidenziare in grassetto, elementi da presentare in MAIUSCOLO per enfasi, uso di emoji/simboli per scansionabilità, e struttura dei paragrafi per massimizzare leggibilità e impatto. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+7.1. MARKETING_CLAIMS: Crea una tabella per set di 10 claim persuasivi organizzati per tipo e canale d'uso, pronti per essere implementati. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.  
+  
+---
+
+7.2. HEADLINE_OPTIONS: Ordina le 5 headline più efficaci con relativo contesto d'uso. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.
+  
+---
+
+7.3. AMAZON_DESCRIPTION: Scrivi la versione finale, completamente formattata della descrizione Amazon, ottimizzata per SEO e conversioni, con lunghezza di 1500-1800 caratteri. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.
+  
+---
+
+------ END PROMPT ------

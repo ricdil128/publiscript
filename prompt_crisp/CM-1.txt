@@ -1,0 +1,50 @@
+------ METADATA ------
+ID: CM-1
+Fase: Analisi Fondazionale
+Versione: 5.0
+------ END METADATA ------
+
+------ VARIABLES ------
+KEYWORD
+MERCATO
+------ END VARIABLES ------
+
+Questo è il primo prompt del framework CRISP ottimizzato per l'analisi e sviluppo del libro sulla keyword "{KEYWORD}" nel mercato {MERCATO}. L'obiettivo è realizzare un'analisi di mercato essenziale che fornisca una base solida per le decisioni strategiche.
+
+ISTRUZIONI GENERALI:
+- Rispondi in modo diretto e conciso a ciascuna domanda
+- Utilizza la parola FINE_RISPOSTA solo quando hai completato la risposta
+- Evita approfondimenti eccessivi non richiesti esplicitamente
+
+------ PROMPT ------
+1. ANALISI DELLA KEYWORD PRINCIPALE: Fornisci il volume di ricerca mensile per "{KEYWORD}" su {MERCATO}, trend degli ultimi 12 mesi, e competitività della keyword (KD). Identifica 2-3 variazioni ad alto potenziale della keyword principale. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+   
+---
+   
+2. KEYWORD CORRELATE STRATEGICHE: Identifica le 5 keyword correlate più rilevanti, con volume di ricerca, competitività (KD), e rilevanza per il tema principale (1-10). Raggruppa queste keyword in 2-3 cluster tematici che potrebbero orientare i contenuti del libro. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+   
+---
+   
+3. CATEGORIE AMAZON OTTIMALI: Identifica le 3 sottocategorie Amazon più appropriate per un libro su "{KEYWORD}", con competitività (1-10), numero approssimativo di titoli concorrenti, e BSR medio dei top 10 libri. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+   
+---
+   
+4. BESTSELLER STRATEGICI: Identifica i 3 bestseller più rilevanti per "{KEYWORD}" su {MERCATO} con titolo/sottotitolo, autore, data di pubblicazione, formati disponibili e prezzi, BSR attuale, rating/recensioni, e numero di pagine. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+   
+---
+    
+5. DISTRIBUZIONE E PREZZO: Valuta la distribuzione tra publisher tradizionali e indipendenti nella nicchia, con percentuali di mercato e fasce di prezzo predominanti per ciascun formato (ebook, cartaceo, audio). Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+     
+---
+      
+6.1. MARKET_INSIGHTS: Fornisci una sintesi dettagliata dei 5 dati più rilevanti sul mercato di "{KEYWORD}", inclusi volumi, trend e opportunità emergenti. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.
+       
+---
+
+6.2. KEYWORD_DATA: Organizza le 5 keyword correlate strategiche individuate in cluster tematici con i relativi dati di volume e competitività. 
+
+---
+
+6.3. BESTSELLER_OVERVIEW: Crea una tabella comparativa dei 3 bestseller identificati, evidenziando solo i pattern comuni e i fattori distintivi più importanti. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.    
+    
+------ END PROMPT ------

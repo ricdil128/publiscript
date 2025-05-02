@@ -1,0 +1,62 @@
+------ METADATA ------
+ID: CM-2
+Fase: Analisi Fondazionale
+Versione: 5.0
+------ END METADATA ------
+
+------ VARIABLES ------
+KEYWORD
+MERCATO
+MARKET_INSIGHTS
+BESTSELLER_OVERVIEW
+------ END VARIABLES ------
+
+Questo prompt si basa sui risultati di CM-1 e si concentra sull'analisi approfondita dei bestseller, identificando pattern strutturali e opportunità di differenziazione per il libro sulla keyword "{KEYWORD}" nel mercato {MERCATO}.
+
+ISTRUZIONI GENERALI:
+- Rispondi in modo diretto e conciso a ciascuna domanda
+- Utilizza la parola FINE_RISPOSTA solo quando hai completato la risposta
+- Evita approfondimenti eccessivi non richiesti esplicitamente
+
+------ PROMPT ------
+1. ANALISI STRUTTURALE: Analizza i 3 bestseller identificati in {BESTSELLER_OVERVIEW}, esaminando: struttura del contenuto (capitoli, lunghezza), bilanciamento teoria/pratica, approccio didattico, e organizzazione logica. Identifica i pattern ricorrenti e le variazioni significative. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+   
+2. ANALISI DEI TITOLI: Analizza i titoli/sottotitoli dei 7-10 libri più venduti nella nicchia, identificando: lunghezza tipica, strutture sintattiche ricorrenti, promesse comuni, uso di numeri/domande/elementi provocatori, e parole chiave ad alto impatto. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+3. ANALISI DELLE RECENSIONI NEGATIVE: Esamina le recensioni negative (1-2 stelle) dei bestseller, identificando i 5 problemi principali con percentuali approssimative di ricorrenza e citazioni rappresentative. Determina quali criticità hanno maggiore impatto sul rating e sulla soddisfazione. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+4. OSTACOLI ALL'IMPLEMENTAZIONE: Identifica dalle recensioni le 5 difficoltà principali che i lettori incontrano nell'applicare i concetti, inclusi: punti di abbandono, frustrazioni ricorrenti, problemi di comprensione, e difficoltà di applicazione pratica. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+5. OPPORTUNITÀ DI MERCATO: Identifica 5 gap significativi basati su: temi sottorappresentati ma richiesti, approcci innovativi mancanti, formati sottoutilizzati, livelli di complessità non serviti (troppo base/avanzato), e segmenti di pubblico trascurati. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+6.1. STRUCTURE_PATTERNS: Fornisci una sintesi dettagliata dei 5 pattern strutturali dominanti nei bestseller, inclusi organizzazione dei contenuti e bilanciamento teoria/pratica. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.
+  
+---
+
+6.2. TITLE_PATTERNS: Analizza 5 pattern efficaci nei titoli con esempi specifici. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.  
+  
+---
+
+6.3. REVIEW_INSIGHTS: Crea una tabella delle 5 criticità principali dai feedback negativi con relative percentuali. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA. 
+  
+---
+
+6.4. IMPLEMENTATION:_OBSTACLES Spiega in modo dettagliato i 5 ostacoli chiave all'implementazione in ordine di impatto. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.
+  
+---
+
+6.5. MARKET_GAPS: Analizza e delinea le 5 opportunità di mercato più promettenti in ordine di potenziale. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.
+  
+---
+
+------ END PROMPT ------

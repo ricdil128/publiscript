@@ -1,0 +1,45 @@
+=== BACKUP Analisi Legacy: LSAT - LSAT - 20250502_014312 ===
+Metadata: {
+  "type": "market_analysis_legacy",
+  "book_type": "Manuale (Non-Fiction)",
+  "keyword": "LSAT",
+  "language": "Italiano",
+  "market": "USA",
+  "timestamp": "20250502_014312"
+}
+Buyer Persona per LSAT nel mercato USA: "Alex l'Aspirante"
+Nome: Alex l'Aspirante
+Profilo Demografico
+Età: 24 anni
+Professione: Neolaureato in Political Science con una minore in Economics, attualmente lavora come assistente amministrativo in uno studio legale
+Livello di istruzione: Bachelor's Degree (laurea triennale)
+Obiettivi Specifici
+Ottenere un punteggio LSAT di almeno 165 (nella fascia dell'89° percentile)
+Entrare in una "Top 14 Law School" negli Stati Uniti
+Completare la preparazione al test in 3-4 mesi di studio intensivo
+Migliorare particolarmente nelle sezioni di Logical Reasoning e Reading Comprehension
+Problemi Percepiti
+Ansia da test e difficoltà a mantenere la concentrazione durante le simulazioni di prova
+Mancanza di tempo per studiare mentre lavora a tempo pieno
+Dubbi sulle strategie di studio più efficaci per ottimizzare il tempo disponibile
+Preoccupazione per l'alto costo dei corsi di preparazione professionali
+Livello di Consapevolezza del Problema
+Alto: è ben informato sull'importanza dell'LSAT per l'ammissione alle Law School e sa che il punteggio è determinante per l'accettazione e le borse di studio
+Conosce la struttura del test e le sue sezioni principali (Logical Reasoning, Reading Comprehension, Analytical Reasoning)
+Ha già fatto alcune simulazioni di pratica e identificato i propri punti deboli
+Grado di Urgenza nella Ricerca di una Soluzione
+Elevato: intende registrarsi per l'esame tra 3-4 mesi e necessita di un piano di studio strutturato immediatamente
+Deve migliorare di almeno 10-15 punti rispetto al suo punteggio attuale nelle simulazioni
+Dove Cerca Soluzioni
+Piattaforme online: Khan Academy, 7Sage, Reddit (r/LSAT), YouTube
+Social media: Gruppi Facebook di preparazione LSAT, Instagram (segue profili di coach LSAT)
+Risorse tradizionali: Libri ufficiali LSAC, Princeton Review, PowerScore
+Passaparola: Consigli da amici che hanno già superato l'esame e da mentor nello studio legale dove lavora
+Le Tre Bullet
+Cosa cerca: Un metodo di studio personalizzato che massimizzi i risultati in poco tempo, strategie efficaci per gestire l'ansia durante il test, tecniche specifiche per migliorare nelle sezioni più difficili
+Cosa teme: Non raggiungere il punteggio minimo per le scuole a cui aspira, sprecare tempo e denaro in risorse inefficaci, dover rimandare l'iscrizione alla Law School di un anno
+Cosa sogna: Ottenere un punteggio eccezionale che gli apra le porte delle migliori università, ricevere una borsa di studio che riduca il debito studentesco, sentirsi sicuro e preparato il giorno dell'esame
+Frase Simbolica
+"Vorrei un libro che mi insegni a pensare come un avvocato, non solo a superare un test, e che mi dia strategie pratiche per affrontare ogni tipo di domanda dell'LSAT con sicurezza e precisione."
+Frase di Ricerca Google
+"Best LSAT prep book for logical reasoning 165+ score guarantee strategies"

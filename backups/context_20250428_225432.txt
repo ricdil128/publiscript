@@ -1,0 +1,27 @@
+=== BACKUP 20250428_225432 ===
+Metadata: {
+  "type": "market_analysis_crisp",
+  "book_type": "Manuale (Non-Fiction)",
+  "keyword": "",
+  "language": "Italiano",
+  "market": "USA",
+  "timestamp": "20250428_225432"
+}
+[22:54:14.393] DEBUG_URL: Monitoraggio navigazione attivato per nuovo driver
+[22:54:14.393] Browser avviato: True
+[22:54:14.393] Tentativo di navigazione a Genspark...
+[22:54:14.393] Navigazione diretta alla pagina di chat...
+[22:54:14.393] DEBUG_URL: Navigazione a: https://genspark.ai
+[22:54:22.848] URL dopo navigazione: https://www.genspark.ai/
+[22:54:22.848] Reindirizzato a URL non di chat, provo approccio alternativo...
+[22:54:22.849] DEBUG_URL: Navigazione a: https://genspark.ai/
+[22:54:26.276] URL finale: https://www.genspark.ai/
+[22:54:26.277] DEBUG_URL: Verificando login...
+[22:54:29.302] DEBUG_URL: Risultato check_login: True
+[22:54:29.302] [22:54:12] Avvio connessione browser...
+[22:54:32.261] Errore nella verifica di analisi esistenti: no such column: v.name
+[22:54:32.261] Avvio analisi di mercato per: 
+[22:54:32.262] ℹ️ Modalità analisi selezionata: CRISP
+[22:54:32.262] 🔍 Fasi CRISP selezionate: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8
+[22:54:32.262] Avvio analisi CRISP 5.0 per: 
+[22:54:32.263] 🔍 Esecuzione selettiva delle fasi CRISP: CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7, CM-8

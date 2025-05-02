@@ -1,0 +1,24 @@
+{
+    "database": {
+        "path": "crisp_projects.db"
+    },
+    "prompts": {
+        "directory": "prompt_crisp"
+    },
+    "systems": {
+        "crisp": {
+            "flow_config": "prompt_crisp/flow_config.json"
+        },
+        "legacy": {
+            "flow_config": "prompt_crisp/legacy_flow_config.json",
+            "prompt_file": "prompt_crisp/legacy_prompt.txt"
+        }
+    },
+    "extractors": {
+        "default_extractor": "regex"
+    },
+    "logging": {
+        "level": "INFO",
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    }
+}

@@ -1,0 +1,57 @@
+------ METADATA ------
+ID: CS-3
+Fase: Strategia di Posizionamento
+Versione: 5.0
+------ END METADATA ------
+
+------ VARIABLES ------
+KEYWORD
+MERCATO
+BUYER_PERSONA_SUMMARY
+STRATEGIC_INSIGHTS
+REVIEW_INSIGHTS
+MARKET_GAPS
+ONLINE_BEHAVIOR_INSIGHTS
+------ END VARIABLES ------
+
+Questo prompt si basa sui risultati precedenti per sviluppare un angolo di attacco strategico e differenziante per il libro su "{KEYWORD}" nel mercato {MERCATO}.
+
+ISTRUZIONI GENERALI:
+- Rispondi in modo diretto e conciso a ciascuna domanda
+- Utilizza la parola FINE_RISPOSTA solo quando hai completato la risposta
+- Evita approfondimenti eccessivi non richiesti esplicitamente
+
+------ PROMPT ------
+1. GENERAZIONE DI ANGOLI DI ATTACCO: Basandoti su {STRATEGIC_INSIGHTS}, crea 3 diversi angoli di attacco potenziali per il libro. Per ciascuno fornisci: nome distintivo, posizionamento in una frase chiara, promessa principale offerta al lettore, e target ideale all'interno della buyer persona. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+2. VALUTAZIONE COMPARATIVA: Per ciascuno dei 3 angoli di attacco, valuta su scala 1-10: unicità rispetto alla concorrenza, risonanza con i bisogni di {BUYER_PERSONA_SUMMARY}, credibilità/realizzabilità, e potenziale commerciale. Identifica i gap di mercato da {MARKET_GAPS} che ciascun angolo affronta. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+3. ELEVATOR PITCH E OBIEZIONI: Per ciascun angolo di attacco, sviluppa un elevator pitch conciso (2-3 frasi) e identifica le 3 obiezioni principali che il pubblico potrebbe sollevare, con relative risposte che trasformano ciascuna obiezione in un punto di forza. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+4. SELEZIONE DELL'ANGOLO OTTIMALE: Seleziona l'angolo di attacco più promettente e fornisci: 5 punti di giustificazione strategica per questa scelta, un confronto sintetico con gli altri due angoli, e una valutazione delle potenziali vulnerabilità con relative strategie di mitigazione. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+5. PERFEZIONAMENTO DELLA STRATEGIA: Per l'angolo selezionato, perfeziona: la formulazione esatta del posizionamento, 3-4 pilastri di contenuto che supporteranno questo angolo, e una promessa principale formulata secondo lo schema "Da [problema] a [risultato] in [timeframe] usando [metodo]". Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+6.1. ANGOLO_ATTACCO: Definisci il posizionamento definitivo in una frase di 15-20 parole che comunica istantaneamente il valore unico del libro. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA. 
+  
+---
+
+6.2. PROMESSA_PRINCIPALE: Enuncia la promessa trasformativa formulata in 20-25 parole secondo lo schema indicato. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.
+  
+---
+
+6.3. USP_ELEMENTS: Crea una tabella comparativa dei 3-4 elementi di unicità che costituiscono il vantaggio competitivo del libro, ciascuno espresso in 5-8 parole. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA.
+  
+---
+
+------ END PROMPT ------

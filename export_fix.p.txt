@@ -1,0 +1,49 @@
+# export_fix.py - Una correzione minimale per la funzionalità di esportazione
+import os
+import shutil
+import datetime
+
+def fix_export_to_txt():
+    """Funzione corretta per l'esportazione in TXT"""
+    try:
+        print("Esportazione in TXT...")
+        
+        # 1. Verifica che il file di contesto esista
+        context_file = "context.txt"
+        if not os.path.exists(context_file):
+            print("❌ File context.txt non trovato!")
+            return None
+        
+        # 2. Crea directory di output se non esiste
+        output_dir = os.path.join(os.getcwd(), "output")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # 3. Genera nome file unico con timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        keyword = "analisi"  # Puoi sostituire con la keyword effettiva se disponibile
+        output_path = os.path.join(output_dir, f"{keyword}_{timestamp}.txt")
+        
+        # 4. Copia il file (operazione semplice ma efficace)
+        shutil.copy2(context_file, output_path)
+        
+        print(f"✅ File TXT salvato: {output_path}")
+        return output_path
+        
+    except Exception as e:
+        print(f"❌ Errore nell'esportazione TXT: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return None
+
+# Esegui il test della funzione
+if __name__ == "__main__":
+    risultato = fix_export_to_txt()
+    if risultato:
+        print(f"Test esportazione riuscito: {risultato}")
+        
+        # Verifica il contenuto
+        if os.path.exists(risultato):
+            size = os.path.getsize(risultato)
+            print(f"File esportato verificato: {size} bytes")
+    else:
+        print("Test fallito")

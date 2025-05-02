@@ -1,0 +1,8 @@
+=== BACKUP 20250426_190402 ===
+Metadata: {
+  "prompt_id": null,
+  "section_number": null,
+  "timestamp": "20250426_190402",
+  "has_terminator": false
+}
+1) Analizza in modo rapido il mercato dei libri cartacei su Amazon.com per la keyword candlestick trading bible. **Keyword & trend di mercato** - Volume di ricerca mensile per il mercato USA su Amazon.com e BSR attuale per candlestick trading bible. - Andamento ultimi 6 mesi per il mercato USA su Amazon.com della candlestick trading bible. - Google Trends: interesse nel tempo e query correlate emergenti relative alla candlestick trading bible sul mercato USA. - Insight da social listening: temi e parole‑chiave in crescita per la candlestick trading bible sul mercato USA. - Scrivi in Italiano ma titoli e kw nella lingua del USA. Concludi con la parola

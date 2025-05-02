@@ -1,0 +1,68 @@
+------ METADATA ------
+ID: CP-1
+Fase: Sviluppo del Prodotto
+Versione: 5.0
+------ END METADATA ------
+
+------ VARIABLES ------
+KEYWORD
+ANGOLO_ATTACCO
+BUYER_PERSONA_SUMMARY
+MARKET_GAPS
+IMPLEMENTATION_OBSTACLES
+STRUCTURE_PATTERNS
+------ END VARIABLES ------
+
+Questo prompt si basa sui risultati precedenti per sviluppare una struttura strategica e un percorso trasformativo efficace per il libro su "{KEYWORD}", allineato con l'angolo di attacco scelto.
+
+ISTRUZIONI GENERALI:
+- Rispondi in modo diretto e conciso a ciascuna domanda
+- Utilizza la parola FINE_RISPOSTA solo quando hai completato la risposta
+- Evita approfondimenti eccessivi non richiesti esplicitamente
+
+------ PROMPT ------
+1. PERCORSO TRASFORMATIVO: Basandoti su "{ANGOLO_ATTACCO}", delinea il percorso del lettore in 4 componenti essenziali: Stato A (situazione attuale con problemi e limitazioni), Catalizzatore (insight chiave che cambia la prospettiva), Trasformazione (3-5 passaggi sequenziali dal punto di partenza al risultato), e Stato B (situazione finale con risultati concreti raggiunti). Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+2. BIG IDEA CENTRALE: Formula l'idea fondamentale che definisce l'essenza del libro in una frase potente e memorabile. Spiega perché questa idea è potente nel contesto di "{KEYWORD}", come si collega all'angolo di attacco, e perché risuonerà con {BUYER_PERSONA_SUMMARY}. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+3. PILASTRI DI CONTENUTO: Basandoti su {STRUCTURE_PATTERNS} e {MARKET_GAPS}, sviluppa 4-5 pilastri principali che strutturano il libro, fornendo per ciascuno: titolo efficace, breve descrizione del ruolo nell'architettura complessiva, collegamento a specifici gap identificati, e fase del percorso trasformativo supportata. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+4. METODO PROPRIETARIO: Crea un acronimo o nome memorabile che organizzi i principali insegnamenti del libro in un sistema coerente e facile da ricordare. Spiega il significato di ciascun elemento dell'acronimo e come si connette ai pilastri di contenuto. Delinea come questo sistema aiuta a differenziare il libro e facilita l'implementazione. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+5. STRUTTURA MACRO: Delinea la struttura organizzativa del libro, includendo: numero e organizzazione di parti/capitoli, progressione logica dell'apprendimento, elementi ricorrenti (es. casi studio, esercizi), e approccio alla presentazione dei concetti complessi. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+6. SUPERAMENTO DEGLI OSTACOLI: Basandoti su {IMPLEMENTATION_OBSTACLES}, identifica 3-4 strategie specifiche integrate nella struttura per superare gli ostacoli principali all'implementazione, specificando dove e come verranno applicate. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+7. ELEMENTI DISTINTIVI: Identifica 3 elementi innovativi che differenzieranno questo libro dai competitor a livello di struttura, contenuto o approccio didattico; spiega come ciascuno supporta l'angolo di attacco e risponde ai bisogni della buyer persona. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Termina la risposta con FINE_RISPOSTA quando hai completato questo punto.
+  
+---
+
+8.1. BOOK_JOURNEY: Crea una mappa concisa del percorso trasformativo del lettore con i passaggi chiave chiaramente definiti. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA. 
+  
+---
+
+8.2. BIG_IDEA: formula l'idea centrale in 1-2 frasi impattanti. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA. 
+  
+---
+
+8.3. CONTENT_PILLARS: crea una tabella con un elenco dei 4-5 pilastri di contenuto con breve descrizione di ciascuno. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA. 
+  
+---
+
+8.4. PROPRIETARY_METHOD: descrivi il sistema o metodo proprietario con spiegazione dei suoi elementi. Scrivi in {lingua} ma titoli e kw nella lingua del {market}. Sii esaustivo, massimo 400 parole. Termina con FINE_RISPOSTA. 
+
+---
+
+------ END PROMPT ------
