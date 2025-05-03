@@ -355,111 +355,109 @@ def analyze_market_crisp(book_type, keyword, language, market, selected_phases=N
         return str(e)
 
 def analyze_market_legacy(book_type, keyword, language, market, analysis_prompt, driver=None, chat_manager=None, markets=None):
-    """
-    Metodo legacy per l'analisi di mercato, che invia automaticamente
-    tutte le righe di prompt in sequenza e restituisce la risposta cumulativa.
-    
-    Args:
-        book_type: Tipo di libro
-        keyword: Keyword principale
-        language: Lingua dell'output
-        market: Mercato di riferimento
-        analysis_prompt: Testo del prompt da utilizzare
-        driver: Istanza del WebDriver Selenium
-        chat_manager: Istanza del ChatManager per logging e salvataggio risposte
-        markets: Dizionario dei mercati Amazon (opzionale)
-        
-    Returns:
-        str: Risposta combinata dall'analisi di mercato
-    """
-    try:
-        # Funzione logger di supporto
-        def log(message):
-            if chat_manager:
-                chat_manager.add_log(message)
-        
-        log(f"🚀 Avvio analisi di mercato (legacy) per: {keyword}")
+        """
+        Metodo legacy per l'analisi di mercato, che invia automaticamente
+        tutte le righe di prompt in sequenza e restituisce la risposta cumulativa.
+        """
+        try:
+            # Funzione logger di supporto
+            def log(message):
+                if chat_manager:
+                    chat_manager.add_log(message)
 
-        # 1) Costruisci l'URL Amazon corretto
-        # Se il dizionario markets non è fornito, usa un dizionario predefinito
-        if not markets:
-            markets = {
-                "USA": "Amazon.com",
-                "Italia": "Amazon.it",
-                "Francia": "Amazon.fr",
-                "Inghilterra": "Amazon.co.uk",
-                "Canada": "Amazon.ca",
-                "Australia": "Amazon.com.au",
-                "Spagna": "Amazon.es",
-                "Germania": "Amazon.de"
-            }
-        
-        amazon_url = markets.get(market, "Amazon.com")
+            log(f"\n🚀 Avvio analisi di mercato (legacy) per: {keyword}")
 
-        # 2) Prepara il prompt totale e splittalo in righe non vuote
-        formatted_prompt = analysis_prompt.format(
-            amazon_url=amazon_url,
-            keyword=keyword,
-            tipo_libro=book_type,
-            lingua=language,
-            market=market
-        )
-        lines = [line.strip() for line in formatted_prompt.split('\n') if line.strip()]
+            # 1) Costruisci l'URL Amazon corretto
+            if not markets:
+                markets = {
+                    "USA": "Amazon.com",
+                    "Italia": "Amazon.it",
+                    "Francia": "Amazon.fr",
+                    "Inghilterra": "Amazon.co.uk",
+                    "Canada": "Amazon.ca",
+                    "Australia": "Amazon.com.au",
+                    "Spagna": "Amazon.es",
+                    "Germania": "Amazon.de"
+                }
 
-        # 3) Prepara metadati per il salvataggio cumulativo
-        from datetime import datetime
-        
-        metadata = {
-            "type": "market_analysis_legacy",
-            "book_type": book_type,
-            "keyword": keyword,
-            "language": language,
-            "market": market,
-            "amazon_url": amazon_url,
-            "timestamp_start": datetime.now().strftime('%Y%m%d_%H%M%S')
-        }
+            amazon_url = markets.get(market, "Amazon.com")
+            log(f"🔗 URL Amazon selezionato: {amazon_url}")
 
-        # 4) Invia riga per riga **automaticamente**
-        responses = []
-        
-        # Importa on-demand per evitare dipendenze circolari
-        import time
-        from ai_interfaces.genspark_driver import send_to_genspark
-        
-        for idx, line in enumerate(lines, start=1):
-            log(f"📨 Invio riga {idx}/{len(lines)}: {line[:60]}...")
-            resp = send_to_genspark(driver, line, log)
-
-            # Rimuovi eventuale "FINE" dalla risposta
-            if resp and "FINE" in resp.upper():
-                resp = resp[:resp.upper().find("FINE")].strip()
-
-            log(f"✅ Risposta riga {idx}: {len(resp)} caratteri")
-            responses.append(resp)
-
-            # Piccola pausa tra una riga e l'altra
-            time.sleep(5)
-
-        # 5) Combina tutte le risposte e salvale
-        combined = "\n\n".join(responses)
-        
-        if chat_manager:
-            chat_manager.save_response(
-                combined,
-                "Analisi Legacy",
-                metadata
+            # 2) Prepara il prompt e splittalo in righe
+            formatted_prompt = analysis_prompt.format(
+                amazon_url=amazon_url,
+                keyword=keyword,
+                tipo_libro=book_type,
+                lingua=language,
+                market=market
             )
-            
-        log(f"🎉 Analisi legacy completata, {len(combined)} caratteri salvati")
+            lines = [line.strip() for line in formatted_prompt.split('\n') if line.strip()]
+            log(f"🧩 Prompt diviso in {len(lines)} righe non vuote")
 
-        return combined
+            from datetime import datetime
+            metadata = {
+                "type": "market_analysis_legacy",
+                "book_type": book_type,
+                "keyword": keyword,
+                "language": language,
+                "market": market,
+                "amazon_url": amazon_url,
+                "timestamp_start": datetime.now().strftime('%Y%m%d_%H%M%S')
+            }
 
-    except Exception as e:
-        import logging
-        error_msg = f"❌ Errore durante l'analisi legacy: {str(e)}"
-        log(error_msg)
-        logging.error(error_msg)
-        return chat_manager.get_log_history_string() if chat_manager else str(e)
+            responses = []
+
+            import time
+            from ai_interfaces.genspark_driver import send_to_genspark
+
+            for idx, line in enumerate(lines, start=1):
+                log(f"\n---\n📨 Riga #{idx}/{len(lines)}\nContenuto: {line}")
+
+                try:
+                    log(f"🟡 Inizio invio prompt per la riga {idx}...")
+                    resp = send_to_genspark(driver, line, log)
+
+                    # Verifica che la risposta sia valida
+                    if not resp or resp.strip() == line.strip() or len(resp.strip()) < 100:
+                        log(f"❌ Risposta non valida per la riga {idx}: vuota, identica alla domanda o troppo corta.")
+                        responses.append(f"[RISPOSTA NON VALIDA RIGA {idx}]")
+                        continue
+
+                    log(f"🔵 Risposta grezza ricevuta: {len(resp)} caratteri")
+
+                    if "FINE" in resp.upper():
+                        fine_index = resp.upper().find("FINE")
+                        log(f"🛑 'FINE' rilevato alla posizione {fine_index} per riga {idx}")
+                        resp = resp[:fine_index].strip()
+
+                    log(f"✅ Risposta completata per riga {idx}: {len(resp)} caratteri")
+                    responses.append(resp)
+
+                except Exception as e:
+                    log(f"🔥 Errore durante la riga {idx}: {str(e)}")
+                    responses.append(f"[ERRORE RIGA {idx}: {str(e)}]")
+
+                time.sleep(5)
+
+
+            combined = "\n\n".join(responses)
+
+            if chat_manager:
+                chat_manager.save_response(
+                    combined,
+                    f"Analisi Legacy: {keyword}",
+                    metadata
+                )
+
+            log(f"🎉 Analisi legacy completata: {len(combined)} caratteri totali")
+            return combined
+
+        except Exception as e:
+            import logging
+            error_msg = f"❌ Errore globale nell'analisi legacy: {str(e)}"
+            log(error_msg)
+            logging.error(error_msg)
+            return chat_manager.get_log_history_string() if chat_manager else str(e)
 
 def filter_legacy_prompt_sections(analysis_prompt, selected_phases, log_callback=None):
     """

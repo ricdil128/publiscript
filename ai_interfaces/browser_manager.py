@@ -348,10 +348,25 @@ def reset_context_manual(driver, log_callback=None, restart_analysis_callback=No
         except Exception as fallback_err:
             log(f"❌ Tutti i metodi di reset falliti: {str(fallback_err)}")
             return False, {"restart_analysis": False}
+
+        # Verifica la dimensione del file di contesto e avvisa se troppo grande
+        try:
+            import os
+            context_file = "context.txt"  # Aggiorna con il percorso corretto se diverso
+            if os.path.exists(context_file):
+                size_kb = os.path.getsize(context_file) / 1024
+                if size_kb > 400:  # Soglia di avviso (400KB)
+                    log(f"⚠️ ATTENZIONE: File di contesto grande ({size_kb:.2f} KB), potrebbe causare problemi")
+        except Exception:
+            pass
     
     # Se abbiamo creato una nuova sessione, segnaliamo che l'analisi deve essere riavviata
     if created_new_session:
         log("🔄 Nuova sessione creata - preparazione per riavvio dell'analisi dalla domanda #1")
+        
+        # PUNTO CRITICO: NON caricare il contesto completo qui
+        # Questo è il punto dove probabilmente si verificava l'overflow
+        # Invece di caricare il contesto, ci limitiamo a preparare il riavvio dell'analisi
         
         # Chiama il callback di riavvio se fornito
         if restart_analysis_callback:
@@ -361,10 +376,16 @@ def reset_context_manual(driver, log_callback=None, restart_analysis_callback=No
             except Exception as callback_err:
                 log(f"⚠️ Errore nel chiamare il callback di riavvio: {str(callback_err)}")
         
+        # RIMUOVERE qualsiasi tentativo di caricare il contesto o il ChatManager qui
+        # Non creare o utilizzare istanze del ChatManager in questa funzione
+        # Se prima c'era, rimuovi righe come:
+        # chat_manager = ChatManager()
+        # chat_manager.handle_chat_reset(driver)
+        # chat_manager.upload_context(driver)
+
         return True, {"restart_analysis": True}
     
     return True, {"restart_analysis": False}
-
 def take_debug_screenshot(driver, prefix, log_callback=None):
     """
     Scatta uno screenshot per debugging

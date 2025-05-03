@@ -1704,7 +1704,7 @@ def debug_response_detection(driver):
     
     # Salva la pagina HTML per analisi offline
     try:
-        html = driver.page_source
+        html = driver.execute_script("return document.documentElement.outerHTML")
         with open("debug_genspark_page.html", "w", encoding="utf-8") as f:
             f.write(html)
         print("✓ HTML della pagina salvato in debug_genspark_page.html")

@@ -1,6 +1,18 @@
-2025/05/02-19:07:28.911 20c2d4 Reusing MANIFEST C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Local Storage\leveldb/MANIFEST-000001
-2025/05/02-19:07:28.915 20c2d4 Recovering log #515
-2025/05/02-19:07:28.917 20c2d4 Reusing old log C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Local Storage\leveldb/000515.log 
-2025/05/02-19:08:28.937 20ce70 Level-0 table #520: started
-2025/05/02-19:08:28.944 20ce70 Level-0 table #520: 154273 bytes OK
-2025/05/02-19:08:28.949 20ce70 Delete type=0 #515
+2025/05/03-09:10:17.964 474ac Reusing MANIFEST C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Local Storage\leveldb/MANIFEST-000001
+2025/05/03-09:10:17.972 474ac Recovering log #562
+2025/05/03-09:10:17.973 474ac Reusing old log C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Local Storage\leveldb/000562.log 
+2025/05/03-09:11:10.343 245c38 Level-0 table #566: started
+2025/05/03-09:11:10.354 245c38 Level-0 table #566: 195168 bytes OK
+2025/05/03-09:11:10.358 245c38 Delete type=0 #562
+2025/05/03-09:11:17.995 245c38 Level-0 table #568: started
+2025/05/03-09:11:18.003 245c38 Level-0 table #568: 194392 bytes OK
+2025/05/03-09:11:18.007 245c38 Delete type=0 #565
+2025/05/03-09:11:18.007 245c38 Compacting 4@0 + 1@1 files
+2025/05/03-09:11:18.026 245c38 Generated table #569@0: 233 keys, 199817 bytes
+2025/05/03-09:11:18.026 245c38 Compacted 4@0 + 1@1 files => 199817 bytes
+2025/05/03-09:11:18.029 245c38 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/05/03-09:11:18.030 245c38 Delete type=2 #559
+2025/05/03-09:11:18.030 245c38 Delete type=2 #561
+2025/05/03-09:11:18.030 245c38 Delete type=2 #563
+2025/05/03-09:11:18.030 245c38 Delete type=2 #566
+2025/05/03-09:11:18.030 245c38 Delete type=2 #568

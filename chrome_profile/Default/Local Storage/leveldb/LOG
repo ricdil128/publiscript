@@ -1,8 +1,9 @@
-2025/05/02-19:11:27.899 20949c Reusing MANIFEST C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Local Storage\leveldb/MANIFEST-000001
-2025/05/02-19:11:27.907 20949c Recovering log #519
-2025/05/02-19:11:27.907 20949c Level-0 table #522: started
-2025/05/02-19:11:27.918 20949c Level-0 table #522: 152107 bytes OK
-2025/05/02-19:11:27.924 20949c Delete type=0 #519
-2025/05/02-19:12:27.944 20cda8 Level-0 table #525: started
-2025/05/02-19:12:27.950 20cda8 Level-0 table #525: 152191 bytes OK
-2025/05/02-19:12:27.953 20cda8 Delete type=0 #523
+2025/05/03-12:33:57.570 24e4f0 Reusing MANIFEST C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Local Storage\leveldb/MANIFEST-000001
+2025/05/03-12:33:57.576 24e4f0 Recovering log #567
+2025/05/03-12:33:57.580 24e4f0 Reusing old log C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Local Storage\leveldb/000567.log 
+2025/05/03-12:34:42.819 24fb84 Level-0 table #572: started
+2025/05/03-12:34:42.830 24fb84 Level-0 table #572: 191570 bytes OK
+2025/05/03-12:34:42.834 24fb84 Delete type=0 #567
+2025/05/03-12:34:57.590 24fb84 Level-0 table #574: started
+2025/05/03-12:34:57.597 24fb84 Level-0 table #574: 190895 bytes OK
+2025/05/03-12:34:57.599 24fb84 Delete type=0 #571

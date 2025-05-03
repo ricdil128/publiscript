@@ -1,0 +1,59 @@
+=== BACKUP Analisi CRISP: Living Trust - Living_Trust - 20250502_230023 ===
+Metadata: {
+  "type": "market_analysis_crisp",
+  "book_type": "Manuale (Non-Fiction)",
+  "keyword": "Living Trust",
+  "language": "Italiano",
+  "market": "USA",
+  "timestamp": "20250502_230023"
+}
+[22:59:50.968] 🔄 Caricamento progetti dal database...
+[22:59:50.969] 📂 Database trovato: crisp_projects.db
+[22:59:50.971] ✅ Caricati 29 progetti dal database
+[22:59:58.622] DEBUG_URL: Monitoraggio navigazione attivato per nuovo driver
+[22:59:58.622] Browser avviato: True
+[22:59:58.622] Tentativo di navigazione a Genspark...
+[22:59:58.622] Navigazione diretta alla pagina di chat...
+[22:59:58.622] DEBUG_URL: Navigazione a: https://genspark.ai
+[23:00:07.142] URL dopo navigazione: https://www.genspark.ai/
+[23:00:07.142] Reindirizzato a URL non di chat, provo approccio alternativo...
+[23:00:07.143] DEBUG_URL: Navigazione a: https://genspark.ai/
+[23:00:11.087] URL finale: https://www.genspark.ai/
+[23:00:11.087] DEBUG_URL: Verificando login...
+[23:00:14.107] DEBUG_URL: Risultato check_login: True
+[23:00:14.108] [22:59:57] Avvio connessione browser...
+[23:00:23.328] DEBUG: Fase CRISP selezionata per salvataggio: CM-1
+[23:00:23.328] DEBUG: Fase CRISP selezionata per salvataggio: CM-2
+[23:00:23.329] DEBUG: Fase CRISP selezionata per salvataggio: CS-1
+[23:00:23.329] DEBUG: Fase CRISP selezionata per salvataggio: CS-2
+[23:00:23.330] DEBUG: Fase CRISP selezionata per salvataggio: CS-3
+[23:00:23.330] DEBUG: Fase CRISP selezionata per salvataggio: CS-F
+[23:00:23.330] DEBUG: Fase CRISP selezionata per salvataggio: CP-1
+[23:00:23.330] DEBUG: Fase CRISP selezionata per salvataggio: CP-2
+[23:00:23.331] DEBUG: Fase CRISP selezionata per salvataggio: CPM-1
+[23:00:23.331] DEBUG: Fase CRISP selezionata per salvataggio: CPM-2
+[23:00:23.331] DEBUG: Fase CRISP selezionata per salvataggio: CPM-3
+[23:00:23.331] Fasi selezionate per salvataggio: ['CM-1', 'CM-2', 'CS-1', 'CS-2', 'CS-3', 'CS-F', 'CP-1', 'CP-2', 'CPM-1', 'CPM-2', 'CPM-3']
+[23:00:23.331] DEBUG: analysis_type_radio esiste: valore = CRISP
+[23:00:23.332] Errore nella verifica di analisi esistenti: no such column: v.name
+[23:00:23.333] Avvio analisi di mercato per: Living Trust
+[23:00:23.333] DEBUG: Usando tipo di analisi salvato: CRISP
+[23:00:23.333] ℹ️ Modalità analisi selezionata: CRISP (use_crisp = True)
+[23:00:23.333] DEBUG - Stato dei checkbox CRISP:
+[23:00:23.333] DEBUG: Valori selezionati nel CheckboxGroup CRISP: ['CM-1: Analisi di mercato - Fase 1', 'CM-2: Analisi di mercato - Fase 2', 'CS-1: Content Strategy - Fase 1', 'CS-2: Content Strategy - Fase 2', 'CS-3: Content Strategy - Fase 3', 'CS-F: Content Strategy - Fase Finale', 'CP-1: Content Production - Fase 1', 'CP-2: Content Production - Fase 2', 'CPM-1: Content Promotion & Marketing - Fase 1', 'CPM-2: Content Promotion & Marketing - Fase 2', 'CPM-3: Content Promotion & Marketing - Fase 3']
+[23:00:23.334] DEBUG: Aggiunta fase CRISP CM-1
+[23:00:23.334] DEBUG: Aggiunta fase CRISP CM-2
+[23:00:23.334] DEBUG: Aggiunta fase CRISP CS-1
+[23:00:23.334] DEBUG: Aggiunta fase CRISP CS-2
+[23:00:23.334] DEBUG: Aggiunta fase CRISP CS-3
+[23:00:23.334] DEBUG: Aggiunta fase CRISP CS-F
+[23:00:23.335] DEBUG: Aggiunta fase CRISP CP-1
+[23:00:23.335] DEBUG: Aggiunta fase CRISP CP-2
+[23:00:23.335] DEBUG: Aggiunta fase CRISP CPM-1
+[23:00:23.335] DEBUG: Aggiunta fase CRISP CPM-2
+[23:00:23.335] DEBUG: Aggiunta fase CRISP CPM-3
+[23:00:23.335] 🔍 Fasi CRISP selezionate: CM-1, CM-2, CS-1, CS-2, CS-3, CS-F, CP-1, CP-2, CPM-1, CPM-2, CPM-3
+[23:00:23.335] DEBUG: crisp_phase_checkboxes esiste: True
+[23:00:23.336] 🔍 Esecuzione selettiva delle fasi CRISP: CM-1, CM-2, CS-1, CS-2, CS-3, CS-F, CP-1, CP-2, CPM-1, CPM-2, CPM-3
+[23:00:23.336] Avvio analisi CRISP 5.0 per: Living Trust
+[23:00:23.336] 🔍 Esecuzione selettiva delle fasi CRISP: CM-1, CM-2, CS-1, CS-2, CS-3, CS-F, CP-1, CP-2, CPM-1, CPM-2, CPM-3

@@ -1,3 +1,6 @@
-2025/05/02-19:11:28.035 20949c Reusing MANIFEST C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Session Storage/MANIFEST-000001
-2025/05/02-19:11:28.036 20949c Recovering log #145
-2025/05/02-19:11:28.037 20949c Reusing old log C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Session Storage/000145.log 
+2025/05/03-12:33:57.631 24e4f0 Reusing MANIFEST C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Session Storage/MANIFEST-000001
+2025/05/03-12:33:57.632 24e4f0 Recovering log #160
+2025/05/03-12:33:57.634 24e4f0 Reusing old log C:\Users\a\Documents\PubliScript_Refactored\chrome_profile\Default\Session Storage/000160.log 
+2025/05/03-12:34:59.781 24fb84 Level-0 table #164: started
+2025/05/03-12:34:59.790 24fb84 Level-0 table #164: 18524 bytes OK
+2025/05/03-12:34:59.793 24fb84 Delete type=0 #160

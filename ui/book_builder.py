@@ -392,9 +392,9 @@ class AIBookBuilder:
     
         return result
 
-    def create_test_project(self):
-        """Delega l'operazione al DatabaseManager"""
-        return self.db_manager.create_test_project()
+    # def create_test_project(self):
+    #    """Delega l'operazione al DatabaseManager"""
+    #    return self.db_manager.create_test_project()
 
     def search_projects(self, keyword=""):
         """Delega l'operazione al DatabaseManager"""
@@ -917,7 +917,7 @@ class AIBookBuilder:
                     
                             # Sistema di attesa adattivo
                             max_wait_cycles = 45  # ~15 minuti totali
-                            stability_threshold = 5  # 5 cicli di stabilità
+                            stability_threshold = 10  # 10 cicli di stabilità
                             cycle_wait = 20  # 20 secondi per ciclo
                     
                             # Inizializzazione variabili di monitoraggio
@@ -2111,6 +2111,8 @@ class AIBookBuilder:
                     # Se uno dei due non esiste, procedi normalmente
                     self.load_analysis_results()
 
+                self.add_log("📌 Analisi parziale completata. Premi '✅ Completa Analisi' per salvare nel database.")
+
                 return result
 
         except Exception as e:
@@ -2204,69 +2206,58 @@ class AIBookBuilder:
         le righe di prompt selezionate e restituisce la risposta cumulativa.
 
         Delega alla funzione analyze_market_legacy in framework/analysis/market_analysis.py
-
-        Args:
-            book_type: Tipo di libro
-            keyword: Keyword principale
-            language: Lingua dell'output
-            market: Mercato di riferimento
-            analysis_prompt: Prompt di analisi completo
-    
-        Returns:
-            str: Risultato dell'analisi o messaggio di errore
         """
 
-        # Controlla se è stato richiesto un riavvio
+        # 1. Controllo riavvio richiesto
         if hasattr(self, 'restart_analysis_needed') and self.restart_analysis_needed:
             self.add_log("🔄 Riavvio richiesto dopo reset del contesto - esecuzione in corso...")
-            self.restart_analysis_needed = False  # Reset della flag
+            self.restart_analysis_needed = False
             return self.restart_current_analysis()
 
         import re
         selected_phases = []
-    
-        # Log di debug per verificare i CheckboxGroup
+
+        # 2. DEBUG: Check esistenza checkbox
         self.add_log(f"DEBUG: legacy_phase_checkboxes esiste: {hasattr(self, 'legacy_phase_checkboxes')}")
-    
+
         if hasattr(self, 'legacy_phase_checkboxes') and self.legacy_phase_checkboxes is not None:
             try:
-                # Ottieni tutte le fasi selezionate dal CheckboxGroup
                 selected_values = self.legacy_phase_checkboxes.value
                 self.add_log(f"DEBUG: Valori selezionati da legacy_phase_checkboxes: {selected_values}")
-            
+
                 for selected_value in selected_values:
-                    # Estrai il numero di fase dalla stringa selezionata (es. "LM-1: Analisi concorrenza")
                     match = re.match(r'([A-Z]+-\d+):', selected_value)
                     if match:
                         phase_id = match.group(1)
-                        # Estrai il numero dalla fase (es. da LM-1 estrae 1)
                         number_match = re.search(r'-(\d+)', phase_id)
                         if number_match:
                             phase_number = int(number_match.group(1))
                             selected_phases.append(phase_number)
                             self.add_log(f"📊 Fase Legacy selezionata: {phase_id} (numero {phase_number})")
+                    else:
+                        self.add_log(f"⚠️ Nessuna corrispondenza regex trovata per: {selected_value}")
             except Exception as e:
                 self.add_log(f"⚠️ Errore nella lettura del CheckboxGroup: {str(e)}")
-    
-        # FALLBACK: Se ancora non abbiamo fasi selezionate, usa il default
+
+        # 3. Fallback se non è stata trovata nessuna fase
         if not selected_phases:
-            selected_phases = [1]  # Default alla prima fase
+            selected_phases = [1]
             self.add_log("⚠️ Nessuna fase trovata, uso fase 1 come default")
-    
-        self.add_log(f"🔍 Fasi Legacy selezionate: {', '.join(map(str, selected_phases))}")
-    
-        # Ora filtra il prompt manualmente
+
+        self.add_log(f"🔍 Fasi Legacy selezionate finali: {', '.join(map(str, selected_phases))}")
+
+        # 4. Regex per dividere le sezioni nel prompt
         filtered_sections = []
         pattern = r'(\d+)[\.|\)](.*?)(?=\n\s*\d+[\.|\)]|$)'
-    
+
         try:
             matches = list(re.finditer(pattern, analysis_prompt, re.DOTALL))
             self.add_log(f"📋 Trovate {len(matches)} sezioni totali nel prompt")
         except Exception as e:
-            self.add_log(f"⚠️ Errore nell'analisi del prompt: {str(e)}")
+            self.add_log(f"⚠️ Errore nell'analisi del prompt con regex: {str(e)}")
             matches = []
-    
-        # Filtra solo le sezioni che corrispondono alle fasi selezionate
+
+        # 5. Filtraggio delle sezioni in base alle fasi
         for match in matches:
             try:
                 section_number = int(match.group(1))
@@ -2274,44 +2265,46 @@ class AIBookBuilder:
                     filtered_sections.append(match.group(0))
                     self.add_log(f"✅ Inclusa sezione {section_number}")
                 else:
-                    self.add_log(f"❌ Saltata sezione {section_number}")
+                    self.add_log(f"❌ Saltata sezione {section_number} (non selezionata)")
             except Exception as e:
-                self.add_log(f"⚠️ Errore nel processare la sezione: {str(e)}")
-    
-        # Se non ci sono sezioni dopo il filtro, verifica se possiamo usare la sezione 1
+                self.add_log(f"⚠️ Errore nel processare una sezione del prompt: {str(e)}")
+
+        # 6. Se nessuna sezione viene inclusa, prova comunque la sezione 1
         if not filtered_sections and matches:
+            self.add_log("⚠️ Nessuna sezione filtrata: tentativo di usare la sezione 1 come fallback")
             for match in matches:
                 try:
                     if int(match.group(1)) == 1:
                         filtered_sections.append(match.group(0))
-                        self.add_log("⚠️ Nessuna sezione filtrata, uso sezione 1")
+                        self.add_log("✅ Fallback: inclusa sezione 1")
                         break
-                except Exception:
-                    continue
-    
-        # Se ancora non abbiamo sezioni, interrompi l'esecuzione
+                except Exception as e:
+                    self.add_log(f"⚠️ Errore nel fallback su sezione 1: {str(e)}")
+
+        # 7. Se ancora nessuna sezione trovata, interrompi
         if not filtered_sections:
-            return self.add_log("⚠️ Nessuna fase selezionata! Seleziona almeno una fase dell'analisi.")
-    
-        # Unisci le sezioni filtrate
+            return self.add_log("❌ Nessuna fase selezionata! Seleziona almeno una fase dell'analisi.")
+
+        # 8. Costruzione del prompt filtrato
         filtered_prompt = "\n\n".join(filtered_sections)
-    
-        # Log del risultato del filtraggio
         self.add_log(f"✅ Prompt filtrato: {len(filtered_prompt)} caratteri, {len(filtered_sections)} sezioni")
-    
-        # Ora chiama il modulo con il prompt filtrato
+
+        # 9. Chiamata finale al modulo delegato
         from framework.analysis.market_analysis import analyze_market_legacy
-    
+
         return analyze_market_legacy(
             book_type=book_type,
-            keyword=keyword, 
-            language=language, 
-            market=market, 
-            analysis_prompt=filtered_prompt,  # Passa il prompt filtrato qui
+            keyword=keyword,
+            language=language,
+            market=market,
+            analysis_prompt=filtered_prompt,
             driver=self.driver,
             chat_manager=self.chat_manager,
             markets=self.markets
         )
+
+
+
 
     def select_all_phases(self, analysis_type):
         """Seleziona tutte le fasi del tipo di analisi specificato"""
@@ -6747,7 +6740,6 @@ class AIBookBuilder:
                             # Opzioni di manutenzione
                             with gr.Row():
                                 diagnose_db_btn = gr.Button("🛠️ Ripara Database", variant="primary")
-                                # create_test_btn = gr.Button("🧪 Crea Progetto Test", variant="secondary")
             
                             # Ricerca e filtri
                             with gr.Row():
