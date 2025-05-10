@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Analisi keto die cookbook - 20250509_005102</title>
+            <style>
+                /* Stili base */
+                body {
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }
+            
+                /* Stili per intestazioni */
+                h1 { font-size: 28px; margin-bottom: 20px; color: #1a56db; }
+                h2 { font-size: 24px; margin-top: 30px; margin-bottom: 15px; color: #1e429f; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+                h3 { font-size: 20px; margin-top: 25px; margin-bottom: 12px; color: #233876; }
+                h4 { font-size: 18px; margin-top: 20px; color: #374151; }
+            
+                /* Stili per testo */
+                p { margin-bottom: 16px; }
+                strong, b { font-weight: 600; color: #111827; }
+            
+                /* Stili per tabelle */
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 20px 0;
+                    font-size: 15px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    border-radius: 6px;
+                    overflow: hidden;
+                }
+            
+                table thead {
+                    background-color: #f3f4f6;
+                }
+            
+                table th {
+                    padding: 12px 15px;
+                    text-align: left;
+                    font-weight: 600;
+                    color: #111827;
+                    border-bottom: 2px solid #d1d5db;
+                }
+            
+                table td {
+                    padding: 10px 15px;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+            
+                table tbody tr:nth-child(even) {
+                    background-color: #f9fafb;
+                }
+            
+                table tbody tr:hover {
+                    background-color: #f3f4f6;
+                }
+            
+                /* Stili per liste */
+                ul, ol {
+                    margin-bottom: 16px;
+                    padding-left: 25px;
+                }
+            
+                ul li, ol li {
+                    margin-bottom: 8px;
+                }
+            
+                ul {
+                    list-style-type: disc;
+                }
+            
+                ul ul {
+                    list-style-type: circle;
+                }
+            
+                /* Stili per codice */
+                pre {
+                    background-color: #f3f4f6;
+                    padding: 15px;
+                    border-radius: 6px;
+                    overflow-x: auto;
+                    font-family: monospace;
+                    margin: 20px 0;
+                    border: 1px solid #e5e7eb;
+                }
+            
+                code {
+                    background-color: #f3f4f6;
+                    padding: 2px 5px;
+                    border-radius: 4px;
+                    font-family: monospace;
+                    font-size: 0.9em;
+                    color: #3b82f6;
+                }
+            
+                /* Stili per citazioni */
+                blockquote {
+                    border-left: 4px solid #3b82f6;
+                    padding: 10px 20px;
+                    margin: 20px 0;
+                    background-color: #f3f4f6;
+                    color: #4b5563;
+                    font-style: italic;
+                }
+            
+                /* Stili per separatori */
+                hr {
+                    border: none;
+                    border-top: 2px solid #e5e7eb;
+                    margin: 30px 0;
+                }
+            
+                /* Stili per note e avvisi */
+                .note {
+                    background-color: #eff6ff;
+                    border-left: 4px solid #3b82f6;
+                    padding: 15px;
+                    margin: 20px 0;
+                    border-radius: 6px;
+                }
+            
+                .warning {
+                    background-color: #fef2f2;
+                    border-left: 4px solid #ef4444;
+                    padding: 15px;
+                    margin: 20px 0;
+                    border-radius: 6px;
+                }
+            
+                .tip {
+                    background-color: #f0fdf4;
+                    border-left: 4px solid #10b981;
+                    padding: 15px;
+                    margin: 20px 0;
+                    border-radius: 6px;
+                }
+            
+                /* Stili per immagini */
+                img {
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: 6px;
+                    margin: 20px 0;
+                }
+            
+                /* Stile per sezioni */
+                .section {
+                    background-color: #ffffff;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin-bottom: 30px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    border: 1px solid #e5e7eb;
+                }
+            
+                /* Stile per metadata */
+                .metadata {
+                    font-size: 14px;
+                    color: #6b7280;
+                    margin-bottom: 30px;
+                    padding: 10px;
+                    background-color: #f9fafb;
+                    border-radius: 6px;
+                }
+            
+                /* Stili per responsive */
+                @media screen and (max-width: 768px) {
+                    body {
+                        padding: 15px;
+                    }
+                
+                    table {
+                        font-size: 14px;
+                    }
+                
+                    table td, table th {
+                        padding: 8px 10px;
+                    }
+                }
+            
+                /* Classi aggiuntive per le tabelle migliorate */
+                .enhanced-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 20px 0;
+                }
+            
+                .even-row {
+                    background-color: #f9fafb;
+                }
+            
+                .odd-row {
+                    background-color: #ffffff;
+                }
+            </style>
+        
+            <!-- INSERIRE LO SCRIPT QUI -->
+            <script>
+                // Script per migliorare le tabelle nell'HTML
+                function enhanceTables() {
+                    document.querySelectorAll('table').forEach(table => {
+                        // Aggiungi classe per lo styling
+                        table.classList.add('enhanced-table');
+                    
+                        // Forza il bordo se non esistente
+                        if (!table.hasAttribute('border') || table.getAttribute('border') === '0') {
+                            table.setAttribute('border', '1');
+                        }
+                    
+                        // Assicurati che la prima riga sia un header
+                        const firstRow = table.querySelector('tr');
+                        if (firstRow) {
+                            const cells = Array.from(firstRow.children);
+                            if (cells.length > 0) {
+                                cells.forEach(cell => {
+                                    if (cell.tagName !== 'TH') {
+                                        // Converti TD a TH per la prima riga
+                                        const th = document.createElement('th');
+                                        th.innerHTML = cell.innerHTML;
+                                        cell.parentNode.replaceChild(th, cell);
+                                    }
+                                });
+                            }
+                        }
+                    
+                        // Aggiungi classi zebra-stripe per migliorare la leggibilità
+                        const rows = Array.from(table.querySelectorAll('tr')).slice(1); // Skip header
+                        rows.forEach((row, index) => {
+                            row.classList.add(index % 2 === 0 ? 'even-row' : 'odd-row');
+                        });
+                    });
+                }
+            
+                // Esegui lo script quando la pagina è caricata
+                document.addEventListener('DOMContentLoaded', enhanceTables);
+            </script>
+        </head>
+        <body>
+            <div class="metadata">
+                <strong>Parola chiave:</strong> keto die cookbook<br>
+                <strong>Data analisi:</strong> 2025/05/09 00:51<br>
+                <strong>Esportazione:</strong> 2025-05-09 00:51:02
+            </div>
+        
+            
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { 
+                    font-family: Arial, sans-serif; 
+                    line-height: 1.6; 
+                    max-width: 1000px; 
+                    margin: 0 auto; 
+                    padding: 20px;
+                    background-color: #f9f9f9;
+                }
+                .header {
+                    background-color: #2563eb;
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                }
+                .ai-response {
+                    background-color: white;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin-bottom: 25px;
+                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+                    border-left: 4px solid #2563eb;
+                }
+                pre { 
+                    background-color: #f5f5f5; 
+                    padding: 10px; 
+                    border-radius: 5px; 
+                    overflow-x: auto; 
+                    font-size: 14px;
+                    border: 1px solid #e0e0e0;
+                }
+                code { 
+                    background-color: #f5f5f5; 
+                    padding: 2px 4px; 
+                    border-radius: 3px; 
+                    font-size: 0.9em;
+                    font-family: Consolas, monospace;
+                }
+                table { 
+                    border-collapse: collapse; 
+                    width: 100%; 
+                    margin: 20px 0;
+                    background-color: white;
+                }
+                th, td { 
+                    border: 1px solid #ddd; 
+                    padding: 12px; 
+                    text-align: left; 
+                }
+                th { 
+                    background-color: #f2f2f2; 
+                    font-weight: bold;
+                }
+                tr:nth-child(even) { 
+                    background-color: #f9f9f9; 
+                }
+                h1, h2, h3, h4 { 
+                    color: #2563eb; 
+                    margin-top: 24px; 
+                    margin-bottom: 16px; 
+                }
+                img { 
+                    max-width: 100%; 
+                    height: auto;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+                .highlight { 
+                    background-color: #ffeb3b; 
+                    padding: 2px 4px; 
+                    border-radius: 3px;
+                }
+                .meta-info {
+                    color: #666;
+                    font-size: 0.9rem;
+                    margin-bottom: 20px;
+                    background-color: #f0f4f8;
+                    padding: 10px;
+                    border-radius: 5px;
+                }
+                ul, ol {
+                    margin-top: 15px;
+                    margin-bottom: 15px;
+                }
+                li {
+                    margin-bottom: 8px;
+                }
+                blockquote {
+                    border-left: 4px solid #ccc;
+                    margin: 15px 0;
+                    padding: 10px 20px;
+                    background-color: #f9f9f9;
+                    font-style: italic;
+                }
+            </style>
+            <title>Analisi Genspark - Solo Risposte AI</title>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Analisi Genspark - Risposte AI</h1>
+                <p>Timestamp: 2025-05-09 00:51:02</p>
+            </div>
+    
+            <div class="meta-info">
+                <p><strong>Sessione:</strong> AUTO</p>
+                <p><strong>Numero totale di risposte:</strong> 1</p>
+                <p><strong>Keyword:</strong> keto die cookbook</p>
+            </div>
+    
+            <div class="ai-responses-container">
+                
+                    <div class="section">
+                        <h2>Sezione 1: Analisi Legacy: keto die cookbook - keto_die_cookbook</h2>
+                        <div><p>Metadata: { "type": "market_analysis_legacy", "book_type": "Manuale (Non-Fiction)", "keyword": "keto die cookbook", "language": "Italiano", "market": "USA", "timestamp": "20250509_005100" } Basandomi sulle recensioni analizzate e sulle ricerche effettuate, ecco una panoramica dettagliata dei principali gap identificati nei libri di cucina sulla dieta keto disponibili su Amazon.com:</p>
+<ol>
+<li>Gap nei Contenuti Visivi</li>
+<p></ol> Problema segnalato: Molti libri di cucina keto contengono poche o nessuna immagine delle ricette. Questa mancanza rende difficile per i lettori visualizzare il risultato finale dei piatti, specialmente per chi è nuovo alla dieta keto e non ha familiarità con preparazioni alternative. Frequenza: Alta - È la lamentela più comune tra le recensioni negative. Molti utenti segnalano che "non ci sono foto" o "pochissime immagini per molte ricette". Opportunità editoriale: Creare un ricettario keto con immagini ad alta qualità per ogni ricetta, includendo anche foto step-by-step per le preparazioni più complesse o insolite. Includere una panoramica visiva dei risultati finali aiuterebbe enormemente chi si avvicina per la prima volta alla cucina keto.</p>
+<ol>
+<li>Gap negli Ingredienti</li>
+<p></ol> Problema segnalato: Molti libri di cucina keto richiedono ingredienti costosi, difficili da reperire o esotici che non sono facilmente disponibili nei negozi standard. Questo rende le ricette inaccessibili per molti utenti, specialmente per chi vive in aree non metropolitane. Frequenza: Alta - Numerose recensioni citano il problema di "ingredienti troppo specializzati" o "ingredienti costosi" che rendono la dieta keto insostenibile nel lungo periodo. Opportunità editoriale: Sviluppare un ricettario che si concentri esclusivamente su ingredienti comuni e facilmente reperibili in qualsiasi supermercato. Includere una sezione con alternative più economiche per ingredienti keto tipicamente costosi (come farine di mandorle o noci) e suggerimenti per risparmiare sulla spesa keto.</p>
+<ol>
+<li>Gap nelle Spiegazioni Nutrizionali</li>
+<p></ol> Problema segnalato: Molti libri non includono informazioni nutrizionali complete o accurate per le ricette. Alcuni forniscono solo i carboidrati totali ma non quelli netti, altri non specificano le quantità di grassi e proteine, rendendo difficile per i lettori rispettare le proporzioni keto. Frequenza: Media-Alta - Diverse recensioni menzionano la mancanza di "informazioni nutrizionali complete" o "conteggio dei macronutrienti inaccurato". Opportunità editoriale: Creare un ricettario che fornisca informazioni nutrizionali complete e dettagliate per ogni ricetta (carboidrati totali, carboidrati netti, fibre, grassi, proteine, calorie) e che spieghi chiaramente come questi valori influenzano la chetosi. Includere anche una guida per calcolare i propri fabbisogni di macronutrienti in base al peso, all'altezza e al livello di attività.</p>
+<ol>
+<li>Gap nelle Ricette Pratiche</li>
+<p></ol> Problema segnalato: Molti ricettari keto presentano ricette troppo complesse, che richiedono troppo tempo di preparazione o troppi passaggi, rendendole irrealistiche per l'uso quotidiano, soprattutto per persone impegnate. Frequenza: Media - Molti utenti lamentano che le ricette sono "troppo elaborate" o richiedono "troppo tempo di preparazione". Opportunità editoriale: Sviluppare un ricettario concentrato esclusivamente su ricette semplici e veloci (pronte in 30 minuti o meno) con ingredienti minimi (5 o meno), pensate specificamente per persone con poco tempo. Includere una sezione dedicata alla preparazione in batch e al meal prep keto per facilitare ulteriormente la pianificazione settimanale.</p>
+<ol>
+<li>Gap nelle Opzioni per Diete Speciali</li>
+<p></ol> Problema segnalato: La maggior parte dei libri di cucina keto si concentra su ricette ricche di latticini e uova, lasciando poche opzioni per chi ha intolleranze o segue diete particolari (vegane, vegetariane, senza latticini, senza frutti di mare, ecc.). Frequenza: Media - Alcune recensioni citano problemi come "troppe ricette con latticini" o "impossibile seguire il libro se sei allergico alle noci". Opportunità editoriale: Creare un ricettario keto specificamente progettato per includere varianti per diverse esigenze dietetiche, con simboli chiari che indichino quali ricette sono senza latticini, senza uova, senza noci, vegetariane o vegane. Includere una sezione dedicata a come adattare le ricette base per soddisfare varie restrizioni alimentari.</p>
+<ol>
+<li>Gap nelle Istruzioni Per Principianti</li>
+<p></ol> Problema segnalato: Alcuni libri, pur dichiarandosi "per principianti", presumono che il lettore abbia già familiarità con la dieta keto e le tecniche di cucina correlate, mancando di spiegazioni fondamentali. Frequenza: Media - Diverse recensioni menzionano "istruzioni poco chiare" o "termini non spiegati". Opportunità editoriale: Sviluppare un vero ricettario per principianti assoluti, che includa un glossario completo dei termini keto, spiegazioni dettagliate delle tecniche di cottura, una lista illustrata degli utensili consigliati e una guida passo-passo per la transizione alla dieta keto, comprese le possibili sfide iniziali e come superarle.</p>
+<ol>
+<li>Gap nelle Ricette Internazionali e Multietniche</li>
+<p></ol> Problema segnalato: La maggior parte dei ricettari keto si concentra su cucina americana/occidentale, con poche opzioni per cucine internazionali o etniche che rispettino i principi keto. Frequenza: Bassa-Media - Alcuni utenti lamentano "mancanza di varietà" o "sempre le stesse ricette in tutti i libri". Opportunità editoriale: Creare un ricettario keto che esplori specificamente versioni keto-friendly di piatti internazionali popolari (italiani, indiani, messicani, cinesi, thailandesi, ecc.), mostrando come adattare cucine tradizionalmente ricche di carboidrati ai principi della dieta keto. Tabella "Gap vs Opportunità" Problema segnalato Frequenza Opportunità editoriale Mancanza di immagini Alta Ricettario completamente illustrato con foto professionali di ogni piatto e istruzioni visive step-by-step Ingredienti costosi o difficili da reperire Alta Ricettario basato esclusivamente su ingredienti comuni dei supermercati con alternative economiche Informazioni nutrizionali incomplete Media-Alta Guida completa con dettagli nutrizionali precisi, calcolo macronutrienti e impatto sulla chetosi Ricette troppo complesse Media Raccolta di ricette rapide (massimo 30 minuti) con 5 o meno ingredienti, pensate per la vita frenetica Poche opzioni per diete speciali Media Ricettario inclusivo con varianti per ogni ricetta e simboli per esigenze dietetiche specifiche Istruzioni insufficienti per principianti Media Guida per principianti assoluti con glossario, tecniche di base e consigli per la transizione Mancanza di varietà etnica/internazionale Bassa-Media Libro dedicato esclusivamente alle versioni keto di piatti internazionali amati Una combinazione strategica di questi elementi in un nuovo ricettario keto colmerebbe significativi gap nel mercato attuale, offrendo valore superiore rispetto ai prodotti esistenti e rispondendo alle esigenze reali degli utenti che hanno espresso le loro frustrazioni nelle recensioni.</p></div>
+                    </div>
+                    
+            </div>
+    
+            <div class="footer" style="text-align: center; margin-top: 30px; color: #666; font-size: 0.8em;">
+                <p>Generato da PubliScript 2025</p>
+            </div>
+        </body>
+        </html>
+        
+        </body>
+        </html>
+        

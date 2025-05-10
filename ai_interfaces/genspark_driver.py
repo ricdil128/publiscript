@@ -616,7 +616,6 @@ def send_to_genspark(driver, text, log_callback=None, prompt_id=None, section_nu
             pass
     
         return update_ui_and_return(error_message, success=False, message=str(e))
-
 def get_last_response(driver, log_callback=None):
     """
     Recupera l'ultima risposta dalla chat con controlli migliorati per terminazione.

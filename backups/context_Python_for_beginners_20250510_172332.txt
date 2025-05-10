@@ -1,0 +1,10 @@
+=== BACKUP Analisi Legacy: Python for beginners - Python_for_beginners - 20250510_172332 ===
+Metadata: {
+  "type": "market_analysis_legacy",
+  "book_type": "Manuale (Non-Fiction)",
+  "keyword": "Python for beginners",
+  "language": "Italiano",
+  "market": "USA",
+  "timestamp": "20250510_172332"
+}
+[RISPOSTA NON VALIDA RIGA 1]

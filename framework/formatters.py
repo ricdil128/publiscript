@@ -68,6 +68,7 @@ def format_analysis_results_html(keyword, market, book_type, language, context=N
             with open(context_file, "r", encoding="utf-8") as f:
                 context_content = f.read()
                 log(f"✅ File contesto letto: {len(context_content)} caratteri")
+                log(f"🧪 Prime 500c del context.txt:\n{context_content[:500]}")
         else:
             log("⚠️ File context.txt non trovato")
     
@@ -178,6 +179,9 @@ def format_analysis_results_html(keyword, market, book_type, language, context=N
     
         # 5. Aggiungi ciascuna sezione come card
         for title, content in sections:
+            log(f"🧩 Sezione: {title}")
+            log(f"Contenuto:\n{content}")
+            log(f"🔎 Contenuto sezione (100c): {content.strip()[:100]}")
             # Pulisci il titolo
             clean_title = re.sub(r'\d+\)\s*', '', title).strip()
             clean_title = clean_title.replace('**', '')  # Rimuovi markdown
@@ -200,7 +204,18 @@ def format_analysis_results_html(keyword, market, book_type, language, context=N
                 icon = "📑"
     
             # Formatta il contenuto
-            formatted_content = process_text(content)
+            from framework.formatters import process_table_html
+
+            # Riconosci una tabella Markdown (linee con | e separatore ---)
+            is_markdown_table = bool(re.search(r"\|.+\|\n\|[-:\s|]+\|\n(\|.+\|\n?)+", content.strip()))
+            log(f"🔍 Tabella markdown rilevata? {is_markdown_table}")
+            if is_markdown_table:
+                formatted_content = process_table_html(content)
+            else:
+                formatted_content = process_text(content)
+
+            if is_markdown_table:
+                log(f"📋 Tabella Markdown rilevata nella sezione: {clean_title}")
     
             # Aggiungi la card della sezione con una struttura HTML migliore
             result_html += f"""
@@ -648,7 +663,8 @@ def save_analysis_to_html(formatted_html, keyword, market, book_type, language, 
         import webbrowser
         try:
             # Apri la versione corrente (sempre aggiornata)
-            webbrowser.open(f"file:///{os.path.abspath(html_filename_current)}")
+            file_path = os.path.abspath(html_filename_current).replace('\\', '/')
+            webbrowser.open("file:///" + file_path)
             log(f"✅ Report HTML aperto nel browser")
         except Exception as e:
             log(f"⚠️ Non è stato possibile aprire il file nel browser: {str(e)}")
@@ -929,7 +945,8 @@ def process_patterns_html(content, pattern_type):
 
 def process_table_html(content):
     """
-    Converte una tabella in formato markdown in HTML
+    Converte una tabella in formato markdown in HTML con miglior formattazione
+    e supporto per tabelle complesse.
     
     Args:
         content: Contenuto della tabella in formato markdown
@@ -938,55 +955,98 @@ def process_table_html(content):
         str: Tabella formattata in HTML
     """
     if not content or '|' not in content:
-        return f"{process_text(content)}"
+        return process_text(content)
 
-    # Dividi le righe
-    rows = content.strip().split('\n')
+    # Dividi le righe e rimuovi eventuali righe vuote
+    rows = [row for row in content.strip().split('\n') if row.strip()]
 
     # Se non abbiamo almeno 2 righe (intestazione + separatore), non è una tabella valida
     if len(rows) < 2:
-        return f"{process_text(content)}"
+        return process_text(content)
 
-    html = ''
+    # Verifica se la seconda riga è un separatore (contiene --|--|--)
+    is_valid_table = bool(re.search(r'^\s*\|[\s\-:|]+\|\s*$', rows[1]))
+    if not is_valid_table:
+        return process_text(content)
 
-    # Processa intestazione
+    # CSS avanzato integrato per la tabella
+    html = '''<div class="table-container">
+<table class="data-table" border="1" cellspacing="0" cellpadding="8" style="width:100%; border-collapse:collapse; margin:15px 0; border:1px solid #ddd;">
+'''
+
+    # Processa intestazione (prima riga)
     header_cells = [cell.strip() for cell in rows[0].strip('|').split('|')]
+    
+    # Rimuovi celle vuote all'inizio e alla fine (possono derivare da |col1|col2|)
+    while header_cells and not header_cells[0]:
+        header_cells.pop(0)
+    while header_cells and not header_cells[-1]:
+        header_cells.pop()
 
-    html += ''
+    html += '  <thead>\n    <tr style="background-color:#f2f2f2;">\n'
     for cell in header_cells:
-        html += f''
-    html += ''
+        html += f'      <th style="border:1px solid #ddd; padding:8px; text-align:left; font-weight:bold;">{cell}</th>\n'
+    html += '    </tr>\n  </thead>\n'
 
-    # Salta l'intestazione e il separatore
+    # Elabora il corpo della tabella, saltando il separatore (seconda riga)
+    html += '  <tbody>\n'
+    
+    # Determina l'allineamento dalle linee separatrici (se presenti)
+    alignments = []
+    if len(rows) > 1:
+        sep_cells = [cell.strip() for cell in rows[1].strip('|').split('|')]
+        # Rimuovi celle vuote come per l'intestazione
+        while sep_cells and not sep_cells[0]:
+            sep_cells.pop(0)
+        while sep_cells and not sep_cells[-1]:
+            sep_cells.pop()
+            
+        for sep in sep_cells:
+            sep = sep.strip()
+            if sep.startswith(':') and sep.endswith(':'):
+                alignments.append('center')
+            elif sep.endswith(':'):
+                alignments.append('right')
+            else:
+                alignments.append('left')
+    
+    # Se non abbiamo abbastanza allineamenti, usiamo left come default
+    while len(alignments) < len(header_cells):
+        alignments.append('left')
+    
+    # Elabora le righe dei dati (dalla terza riga in poi)
+    row_index = 0
     for row in rows[2:]:
-        if '---' in row:  # Ignora eventuali altri separatori
-            continue
+        row_index += 1
+        bg_color = '#ffffff' if row_index % 2 == 0 else '#f9f9f9'  # Righe alternate
         
         cells = [cell.strip() for cell in row.strip('|').split('|')]
-        html += ''
-        for cell in cells:
-            html += f''
-        html += ''
-
-    html += '{process_text(cell)}{process_text(cell)}'
+        # Rimuovi celle vuote all'inizio e alla fine
+        while cells and not cells[0]:
+            cells.pop(0)
+        while cells and not cells[-1]:
+            cells.pop()
+            
+        html += f'    <tr style="background-color:{bg_color};">\n'
+        
+        # Inserisci le celle con allineamento appropriato
+        for i, cell in enumerate(cells):
+            if i < len(alignments):
+                align = alignments[i]
+            else:
+                align = 'left'  # Default
+                
+            html += f'      <td style="border:1px solid #ddd; padding:8px; text-align:{align};">{cell}</td>\n'
+        
+        html += '    </tr>\n'
+        
+    html += '  </tbody>\n'
+    html += '</table>\n</div>'
+    
     return html
-
 def save_analysis_to_html(formatted_html, keyword, market, book_type, language, analysis_type="Legacy", log_callback=None):
     """
     Salva l'analisi formattata in file HTML con design accattivante.
-    Crea sia un file con timestamp che un file sempre aggiornato per ogni keyword.
-    
-    Args:
-        formatted_html: L'HTML già formattato
-        keyword: La keyword dell'analisi
-        market: Il mercato di riferimento
-        book_type: Il tipo di libro
-        language: La lingua dell'analisi
-        analysis_type: Il tipo di analisi (CRISP o Legacy)
-        log_callback: Funzione per logging (opzionale)
-        
-    Returns:
-        str: Percorso del file salvato
     """
     import os
     from datetime import datetime
@@ -1010,169 +1070,167 @@ def save_analysis_to_html(formatted_html, keyword, market, book_type, language, 
     html_filename_current = f"{output_dir}/{safe_keyword}_{analysis_type}_current.html"
     
     # Aggiungi stili CSS per un design accattivante
-    styled_html = f"""
-    
-    
-    
-        
-        
-        Analisi {analysis_type}: {keyword} - {market}
-        
-            :root {{
-                --primary-color: #3f51b5;
-                --secondary-color: #ff4081;
-                --light-bg: #f5f5f5;
-                --dark-bg: #333;
-                --text-color: #212121;
-                --light-text: #f5f5f5;
-            }}
-            body {{
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                line-height: 1.6;
-                color: var(--text-color);
-                margin: 0;
-                padding: 0;
-                background-color: var(--light-bg);
-            }}
-            .container {{
-                max-width: 1200px;
-                margin: 0 auto;
-                padding: 20px;
-            }}
-            header {{
-                background-color: var(--primary-color);
-                color: var(--light-text);
-                padding: 20px;
-                text-align: center;
-                border-radius: 8px 8px 0 0;
-                margin-bottom: 30px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            }}
-            h1, h2, h3 {{
-                font-weight: 600;
-            }}
-            h1 {{
-                font-size: 2.5rem;
-                margin-bottom: 10px;
-            }}
-            h2 {{
-                font-size: 1.8rem;
-                color: var(--primary-color);
-                border-bottom: 2px solid var(--primary-color);
-                padding-bottom: 5px;
-                margin-top: 40px;
-            }}
-            h3 {{
-                font-size: 1.4rem;
-                color: var(--secondary-color);
-                margin-top: 30px;
-            }}
-            .section {{
-                background-color: white;
-                border-radius: 8px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                margin-bottom: 20px;
-                padding: 25px;
-            }}
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin: 20px 0;
-            }}
-            th, td {{
-                border: 1px solid #ddd;
-                padding: 12px;
-            }}
-            th {{
-                background-color: var(--primary-color);
-                color: white;
-                text-align: left;
-            }}
-            tr:nth-child(even) {{
-                background-color: #f2f2f2;
-            }}
-            .highlight {{
-                background-color: #fff3cd;
-                padding: 15px;
-                border-left: 5px solid #ffc107;
-                margin: 20px 0;
-            }}
-            .meta-info {{
-                color: #666;
-                font-size: 0.9rem;
-                margin-bottom: 15px;
-            }}
-            img {{
-                max-width: 100%;
-                height: auto;
-                border-radius: 4px;
-            }}
-            footer {{
-                background-color: var(--dark-bg);
-                color: var(--light-text);
-                text-align: center;
-                padding: 15px;
-                margin-top: 30px;
-                border-radius: 0 0 8px 8px;
-            }}
-            ul, ol {{
-                margin-top: 15px;
-                margin-bottom: 15px;
-            }}
-            li {{
-                margin-bottom: 8px;
-            }}
-            .bestseller-item, .idea-item, .gap-item {{
-                background-color: white;
-                border-left: 5px solid var(--primary-color);
-                padding: 15px;
-                margin-bottom: 15px;
-                border-radius: 0 8px 8px 0;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }}
-            .pattern-item {{
-                border-left: 5px solid var(--secondary-color);
-            }}
-            pre {{
-                background-color: #f0f0f0;
-                padding: 15px;
-                border-radius: 5px;
-                overflow-x: auto;
-                white-space: pre-wrap;
-            }}
-            blockquote {{
-                border-left: 5px solid #ddd;
-                padding-left: 15px;
-                margin-left: 0;
-                font-style: italic;
-                color: #555;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <header>
-                <h1>Analisi {analysis_type}: {keyword}</h1>
-                <div class="meta-info">
-                    <strong>Mercato:</strong> {market} | 
-                    <strong>Tipo:</strong> {book_type} | 
-                    <strong>Lingua:</strong> {language} | 
-                    <strong>Data:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}
-                </div>
-            </header>
-            
-            <!-- Contenuto dell'analisi -->
-            <div class="section">
-                {formatted_html}
+    styled_html = f"""<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisi {analysis_type}: {keyword} - {market}</title>
+    <style>
+        :root {{
+            --primary-color: #3f51b5;
+            --secondary-color: #ff4081;
+            --light-bg: #f5f5f5;
+            --dark-bg: #333;
+            --text-color: #212121;
+            --light-text: #f5f5f5;
+        }}
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-bg);
+        }}
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        header {{
+            background-color: var(--primary-color);
+            color: var(--light-text);
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }}
+        h1, h2, h3 {{
+            font-weight: 600;
+        }}
+        h1 {{
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }}
+        h2 {{
+            font-size: 1.8rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 5px;
+            margin-top: 40px;
+        }}
+        h3 {{
+            font-size: 1.4rem;
+            color: var(--secondary-color);
+            margin-top: 30px;
+        }}
+        .section {{
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            padding: 25px;
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }}
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 12px;
+        }}
+        th {{
+            background-color: var(--primary-color);
+            color: white;
+            text-align: left;
+        }}
+        tr:nth-child(even) {{
+            background-color: #f2f2f2;
+        }}
+        .highlight {{
+            background-color: #fff3cd;
+            padding: 15px;
+            border-left: 5px solid #ffc107;
+            margin: 20px 0;
+        }}
+        .meta-info {{
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }}
+        img {{
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }}
+        footer {{
+            background-color: var(--dark-bg);
+            color: var(--light-text);
+            text-align: center;
+            padding: 15px;
+            margin-top: 30px;
+            border-radius: 0 0 8px 8px;
+        }}
+        ul, ol {{
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }}
+        li {{
+            margin-bottom: 8px;
+        }}
+        .bestseller-item, .idea-item, .gap-item {{
+            background-color: white;
+            border-left: 5px solid var(--primary-color);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .pattern-item {{
+            border-left: 5px solid var(--secondary-color);
+        }}
+        pre {{
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }}
+        blockquote {{
+            border-left: 5px solid #ddd;
+            padding-left: 15px;
+            margin-left: 0;
+            font-style: italic;
+            color: #555;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Analisi {analysis_type}: {keyword}</h1>
+            <div class="meta-info">
+                <strong>Mercato:</strong> {market} | 
+                <strong>Tipo:</strong> {book_type} | 
+                <strong>Lingua:</strong> {language} | 
+                <strong>Data:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}
             </div>
-            
-            <footer>
-                <p>Generato da PubliScript {datetime.now().year} - {timestamp}</p>
-            </footer>
+        </header>
+        
+        <!-- Contenuto dell'analisi -->
+        <div class="section">
+            {formatted_html}
         </div>
-    </body>
-    </html>
-    """
+        
+        <footer>
+            <p>Generato da PubliScript {datetime.now().year} - {timestamp}</p>
+        </footer>
+    </div>
+</body>
+</html>"""
     
     # Salva entrambe le versioni del file HTML
     try:
@@ -1191,7 +1249,8 @@ def save_analysis_to_html(formatted_html, keyword, market, book_type, language, 
         import webbrowser
         try:
             # Apri la versione corrente (sempre aggiornata)
-            webbrowser.open(f"file:///{os.path.abspath(html_filename_current)}")
+            file_path = os.path.abspath(html_filename_current).replace('\\', '/')
+            webbrowser.open("file:///" + file_path)
             log(f"✅ Report HTML aperto nel browser")
         except Exception as e:
             log(f"⚠️ Non è stato possibile aprire il file nel browser: {str(e)}")

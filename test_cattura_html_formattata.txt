@@ -1,0 +1,29 @@
+from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
+import time
+import os
+
+# 1) Configura Firefox in modalità headless
+opts = Options()
+opts.headless = True
+
+# 2) Inizializza il driver (assicurati di avere geckodriver in PATH)
+driver = webdriver.Firefox(options=opts)
+
+try:
+    # 3) Carica la pagina della tua app Gradio
+    url = "http://localhost:7860"  
+    driver.get(url)
+    
+    # 4) Attendi un paio di secondi che tutto venga renderizzato
+    time.sleep(5)
+    
+    # 5) Estrai l'HTML completo
+    full_html = driver.execute_script("return document.documentElement.outerHTML;")
+    
+    # 6) Salva su file
+    out_path = os.path.join(os.getcwd(), "gradio_full_snapshot.html")
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(full_html)
+    
+    print(f"HTML completo salvato in: {out_path}")

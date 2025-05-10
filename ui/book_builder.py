@@ -1,75 +1,89 @@
+
 """
 Builder principale per la creazione di libri.
 """
+import os
 import sys
 import re
-import sqlite3
-import time
-import logging
-import os
 import json
+import time
+import datetime
+import shutil
+import logging
 import traceback
-import gradio as gr
 from datetime import datetime
 from pathlib import Path
+
+import gradio as gr
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
+from analysis.analyzers import analyze_market
 
-from ai_interfaces.browser_manager import setup_browser, check_login, create_fresh_chat
+from ai_interfaces.browser_manager import (
+    setup_browser,
+    check_login,
+    create_fresh_chat,
+    set_connection_status
+)
 from ai_interfaces.interaction_utils import get_input_box, clear_chat
 
-from framework.crisp_framework import CRISPFramework
-from framework.crisp_utils import replace_variables
-from .chat_manager import ChatManager
-from .cooldown_manager import CooldownManager
-from .database_manager import DatabaseManager  # Importiamo il DatabaseManager
+from framework.crisp_framework    import CRISPFramework
+from framework.crisp_utils        import replace_variables
 from framework.analysis.market_analysis import filter_legacy_prompt_sections
-from framework.formatters import format_analysis_results_html, save_analysis_to_html
+from framework.formatters         import format_analysis_results_html, save_analysis_to_html
+
+from .cooldown_manager    import CooldownManager
+from .chat_manager        import ChatManager
+from .database_manager    import DatabaseManager
+
+# Import dei generatori
+from generators.crisp_generator    import _generate_book_crisp   as generate_book_crisp
+from generators.legacy_generator   import _generate_book_legacy  as generate_book_legacy
+from generators.common_generator   import generate_book
+
+# Import dei metodi di analisi
+from analysis.analyzers import (
+    _analyze_market_crisp,
+    _analyze_market_legacy,
+    resume_analysis,
+    continue_analysis,
+    _continue_analysis_crisp,
+    complete_analysis,
+    _complete_analysis_crisp,
+    _complete_analysis_legacy
+)
+
+# Directory costante
+ANALYSIS_DIR = Path("context_files")
 
 class AIBookBuilder:
     def __init__(self):
+        self._analysis_session_id = "AUTO"
         self.cooldown_manager = CooldownManager()
-        self.selected_analysis_type = "CRISP"  # Valore predefinito
-        self.chat_manager = ChatManager(parent=self)
-        self.is_logged_in = False
-        from ai_interfaces.browser_manager import set_connection_status
-        set_connection_status(False)  # Imposta lo stato globale iniziale
-        self.driver = None
-        self.log_history = []
-        self.chat_manager = ChatManager(parent=self)  # Passa il riferimento di sé stesso
-        self.current_analysis = None      
-        self.question_status = {}  # Dizionario per tracciare lo stato delle domande   
+        self.chat_manager     = ChatManager(parent=self)
+        set_connection_status(False)
+        self.driver           = None
+        self.log_history      = []
+        self.current_analysis = None
+        self.context_dir      = ANALYSIS_DIR
+        ANALYSIS_DIR.mkdir(exist_ok=True)
+        Path("output").mkdir(exist_ok=True)
+        Path("debug").mkdir(exist_ok=True)
 
-        # Imposta directory
-        import os
-        self.context_dir = "context_files"
-        os.makedirs(self.context_dir, exist_ok=True)
-        os.makedirs("output", exist_ok=True)
-        os.makedirs("debug", exist_ok=True)
-       
-
-        # Inizializziamo il DatabaseManager
         self.db_manager = DatabaseManager(
-            project_db_path="crisp_projects.db", 
+            project_db_path="crisp_projects.db",
             log_callback=self.add_log
         )
 
-        import logging
-        logger = logging.getLogger("AIBookBuilder")
-        
-        # Inizializza il framework CRISP
-        self.crisp = CRISPFramework(
+        self.crisp    = CRISPFramework(
             prompt_dir="prompt_crisp",
-    	    project_db_path="crisp_projects.db",
-    	    driver=None  # Il driver verrà impostato dopo la connessione
-	)
-        
-        # Rimuovo il percorso manuale: uso sempre CRISP
+            project_db_path="crisp_projects.db",
+            driver=None
+        )
         self.use_crisp = True
-        
-        # Tipi di libro disponibili
+
         self.book_types = [
             "Manuale (Non-Fiction)",
             "Ricettario",
@@ -77,20 +91,14 @@ class AIBookBuilder:
             "Survival & Outdoor",
             "Test Study"
         ]
-
-        # Mercati Amazon disponibili
         self.markets = {
             "USA": "Amazon.com",
             "Italia": "Amazon.it",
-            "Francia": "Amazon.fr",
-            "Inghilterra": "Amazon.co.uk",
-            "Canada": "Amazon.ca",
-            "Australia": "Amazon.com.au",
-            "Spagna": "Amazon.es",
-            "Germania": "Amazon.de"
+            # …
         }
-        
+
         # Prompt di analisi default
+              
         self.default_analysis_prompt = """1) Analizza la concorrenza su {amazon_url} per la keyword {keyword} nel mercato {market}: elenca i primi 5 risultati Amazon con titolo, sottotitolo, BSR, prezzo, recensioni, formato, keyword usate nei titoli, pattern visivi delle copertine (colori, stile, elementi ricorrenti), call to action e benefit promessi nei titoli o sottotitoli; aggiungi dati da Google Trends, query emergenti e insight dai social (es. video virali, reel, post rilevanti); includi anche eventuali “claim” ricorrenti o promesse implicite nei testi di vendita; concludi con una tabella di sintesi e un commento operativo su cosa domina, cosa manca, e quali pattern emergono; scrivi in {lingua}, titoli e keyword nella lingua del {market}; concludi con la parola FINE.
 2) Valuta la profittabilità e competitività della keyword {keyword} su {amazon_url} nel mercato {market}: considera vendite mensili stimate per range di BSR, prezzo medio per ebook e cartaceo, royalty KDP stimate per formato, numero e qualità dei competitor (copertine, recensioni, struttura, USP), livello di saturazione e difficoltà stimata nel posizionarsi (forza dei top 5 titoli), segnala se sono self-published o con editore; includi 3 tabelle: “BSR vs Vendite e Margini”, “Top 5 Competitor”, “Analisi Competitività” con punteggi; concludi con 3 bullet: "Alta opportunità se…", "Moderata se…", "Bassa se…"; scrivi in {lingua}, titoli e keyword nella lingua del {market}; concludi con la parola FINE.
 3) Analizza i 3 migliori concorrenti per la keyword {keyword} su {amazon_url} nel mercato {market}: mostra per ciascuno titolo, sottotitolo, BSR, recensioni, prezzo, formato, numero di pagine (se disponibile), struttura interna (indice o sezioni visibili), copertina (stile, colori, elementi distintivi), USP percepita, e bonus offerti (esercizi, checklist, link, QR code); includi una tabella comparativa con righe = libri e colonne: BSR, prezzo, recensioni, pagine, bonus, punto di forza percepito; concludi con insight su ciò che li rende forti e ripetuti pattern utili da superare; scrivi in {lingua}, titoli e keyword nella lingua del {market}; concludi con la parola FINE.
@@ -100,6 +108,332 @@ class AIBookBuilder:
 7) Definisci il tono di voce, lo stile narrativo e la struttura ideale del testo per il libro basato sull’idea editoriale selezionata: specifica persona narrativa, registro, lessico, ritmo e livello di approfondimento, indicando le regole di coerenza stilistica (es. uso della terza persona, assenza di bullet non richiesti, paragrafi sviluppati in blocchi coesi); descrivi come devono essere strutturati apertura, sviluppo e conclusione di ogni capitolo, inclusa l’integrazione fluida di riferimenti storici, pratici e scientifici senza frammentazioni; includi 2–3 esempi di paragrafi scritti nello stile indicato da usare come modello per la stesura del libro; scrivi in {lingua}; concludi con la parola FINE.
 8) In base all’idea selezionata, proponi 3 titoli con relativo sottotitolo (titolo + sottotitolo per ciascuna variante), valuta i titoli con punteggio da 1 a 5 stelle in base a chiarezza, potere evocativo, potenziale di vendita, pertinenza tematica e compatibilità con la buyer persona e i gap individuati; scegli il migliore e motiva la scelta, poi crea un bonus testuale in PDF coerente con il titolo scelto e utile alla buyer persona. Genera 3 idee di indice coerenti con il titolo selezionato, scegli e motiva la migliore, poi sviluppa l’indice completo del libro con tutti i capitoli necessari, basandoti anche sulla lunghezza media dei libri concorrenti. L’indice deve essere scritto su una riga per gruppo di sottocapitoli: se un capitolo ha 2–3 sottocapitoli, vanno tutti su una riga; se ha 4–6 sottocapitoli, vanno distribuiti in 2 righe; se ha 7 o più, vanno divisi in 3 righe o più. Non spezzare mai i paragrafi dal proprio sottocapitolo. Ogni riga dell’indice sarà un’unità editoriale da mandare in produzione. Infine, scrivi l’indice completo del bonus scelto; scrivi in {lingua}, titoli e keyword nella lingua del {market}; concludi con la parola FINE.
  """
+     
+
+    # ———————————————————————————————————————————————
+    # DELEGA DEI METODI DI ANALISI
+    # ———————————————————————————————————————————————
+
+    def analyze_market(self, book_type, keyword, language, market,
+                       analysis_prompt=None, use_crisp=None):
+        # se l’utente ha selezionato Legacy, forziamo use_crisp=False
+        if self.selected_analysis_type == "Legacy":
+            use_crisp = False
+
+        return analyze_market(
+            self,
+            book_type, keyword, language, market,
+            analysis_prompt=analysis_prompt,
+            use_crisp=use_crisp
+        )
+
+    def _analyze_market_crisp(self, book_type, keyword, language, market, selected_phases=None):
+        """Delega l'analisi CRISP al modulo esterno."""
+        return _analyze_market_crisp(self, book_type, keyword, language, market, selected_phases)
+
+    def _analyze_market_legacy(self, book_type, keyword, language, market, analysis_prompt):
+        """Delega l'analisi legacy al modulo esterno."""
+        return _analyze_market_legacy(self, book_type, keyword, language, market, analysis_prompt)
+
+    def resume_analysis(self, project_id, selected_phases=None):
+        """Delega la ripresa analisi al modulo esterno."""
+        return resume_analysis(self, project_id, selected_phases)
+
+    def continue_analysis(self):
+        """Delega la continuazione analisi (sceglie CRISP o legacy)."""
+        return continue_analysis(self)
+
+    def _continue_analysis_crisp(self):
+        """Delega la continuazione specifica CRISP."""
+        return _continue_analysis_crisp(self)
+
+    def complete_analysis(self):
+        """Delega il completamento dell'analisi (prepara i dati per il libro)."""
+        return complete_analysis(self)
+
+    def _complete_analysis_crisp(self):
+        """Delega il completamento analisi CRISP 5.0."""
+        return _complete_analysis_crisp(self)
+
+    def _complete_analysis_legacy(self):
+        """Delega il completamento analisi legacy."""
+        from analysis.analyzers import _complete_analysis_legacy
+        return _complete_analysis_legacy(self, self)
+
+    def extract_data_for_book_generation(self):
+        """
+        Estrae i dati pertinenti dall'analisi corrente per la generazione del libro.
+        Funziona con diverse fonti: current_analysis, file di contesto, o HTML caricato.
+        Non richiede BeautifulSoup - usa solo regex per l'analisi.
+        """
+        try:
+            # Inizializza dizionario per i dati
+            book_data = {}
+            data_source = "nessuna fonte"
+        
+            # Strategia 1: Cerca nell'analisi corrente (se disponibile)
+            if hasattr(self, 'current_analysis') and self.current_analysis:
+                project_data = self.current_analysis.get('project_data', {})
+                if project_data:
+                    data_source = "current_analysis"
+                
+                    # Estrai titolo e sottotitolo
+                    if 'TITOLO_LIBRO' in project_data:
+                        book_data['title'] = project_data['TITOLO_LIBRO']
+                    if 'SOTTOTITOLO_LIBRO' in project_data:
+                        book_data['subtitle'] = project_data['SOTTOTITOLO_LIBRO']
+                    
+                    # Estrai tono di voce
+                    if 'VOICE_STYLE' in project_data:
+                        book_data['voice_style'] = project_data['VOICE_STYLE']
+                    
+                    # Estrai angolo editoriale e USP
+                    if 'ANGOLO_ATTACCO' in project_data:
+                        book_data['angle'] = project_data['ANGOLO_ATTACCO']
+                    if 'USP' in project_data:
+                        book_data['usp'] = project_data['USP']
+                
+                    # Estrai indice se disponibile
+                    if 'INDICE_LIBRO' in project_data:
+                        book_data['index'] = project_data['INDICE_LIBRO']
+                    
+                    # Aggiungi dati sul contesto di mercato
+                    if 'MARKET_INSIGHTS' in project_data:
+                        book_data['market_insights'] = project_data['MARKET_INSIGHTS']
+                    if 'BUYER_PERSONA_SUMMARY' in project_data:
+                        book_data['buyer_persona'] = project_data['BUYER_PERSONA_SUMMARY']
+        
+            # Strategia 2: Se non ci sono dati, prova a estrarli dall'HTML caricato
+            if not book_data and hasattr(self, 'results_display') and self.results_display.value:
+                html_content = self.results_display.value
+                data_source = "HTML caricato"
+            
+                self.add_log("🔍 Tentativo di estrazione dati dall'HTML caricato...")
+            
+                try:
+                    import re
+                
+                    # Rimuovi i tag HTML più comuni per ottenere il testo puro
+                    text_content = re.sub(r'<[^>]+>', ' ', html_content)
+                    text_content = re.sub(r'\s+', ' ', text_content)  # Normalizza gli spazi
+                
+                    # Cerca titolo del libro
+                    title_patterns = [
+                        r'(?:titolo|title)[:\s]+[""]?([^"\n,;]+)[""]?',
+                        r'(?:TITOLO|TITLE)[:\s]+[""]?([^"\n,;]+)[""]?',
+                        r'(?:libro|book)[:\s]+[""]?([^"\n,;]+)[""]?'
+                    ]
+                
+                    for pattern in title_patterns:
+                        title_match = re.search(pattern, text_content, re.IGNORECASE)
+                        if title_match:
+                            book_data['title'] = title_match.group(1).strip()
+                            self.add_log(f"✅ Titolo estratto dall'HTML: {book_data['title']}")
+                            break
+                
+                    # Cerca tono di voce
+                    voice_patterns = [
+                        r'(?:tono di voce|voice style)[:\s]+([^\n\.;]+)',
+                        r'(?:stile narrativo|writing style)[:\s]+([^\n\.;]+)',
+                        r'(?:stile|style)[:\s]+([^\n\.;]+)'
+                    ]
+                
+                    for pattern in voice_patterns:
+                        voice_match = re.search(pattern, text_content, re.IGNORECASE)
+                        if voice_match:
+                            book_data['voice_style'] = voice_match.group(1).strip()
+                            self.add_log(f"✅ Tono di voce estratto dall'HTML: {book_data['voice_style']}")
+                            break
+                
+                    # Cerca angolo di attacco
+                    angle_patterns = [
+                        r'(?:angolo di attacco|editorial angle)[:\s]+([^\n\.;]+)',
+                        r'(?:approccio|approach)[:\s]+([^\n\.;]+)',
+                        r'(?:angolo editoriale)[:\s]+([^\n\.;]+)'
+                    ]
+                
+                    for pattern in angle_patterns:
+                        angle_match = re.search(pattern, text_content, re.IGNORECASE)
+                        if angle_match:
+                            book_data['angle'] = angle_match.group(1).strip()
+                            self.add_log(f"✅ Angolo editoriale estratto dall'HTML: {book_data['angle']}")
+                            break
+                
+                    # Cerca USP
+                    usp_patterns = [
+                        r'(?:USP|unique selling proposition)[:\s]+([^\n\.;]+)',
+                        r'(?:proposta di valore|value proposition)[:\s]+([^\n\.;]+)',
+                        r'(?:vantaggio unico|unique advantage)[:\s]+([^\n\.;]+)'
+                    ]
+                
+                    for pattern in usp_patterns:
+                        usp_match = re.search(pattern, text_content, re.IGNORECASE)
+                        if usp_match:
+                            book_data['usp'] = usp_match.group(1).strip()
+                            self.add_log(f"✅ USP estratta dall'HTML: {book_data['usp']}")
+                            break
+                
+                    # Cerca l'indice del libro nell'originale HTML (mantiene la formattazione)
+                    index_pattern = r'(?:INDICE|INDEX).*?(?:CAPITOLO|CHAPTER).*?(?:CONCLUSIONE|CONCLUSION)'
+                    index_match = re.search(index_pattern, html_content, re.IGNORECASE | re.DOTALL)
+                    if index_match:
+                        # Pulisci i tag HTML dal risultato
+                        raw_index = index_match.group(0)
+                        clean_index = re.sub(r'<[^>]+>', ' ', raw_index)
+                        clean_index = re.sub(r'\s+', ' ', clean_index)
+                        book_data['index'] = clean_index.strip()
+                        self.add_log(f"✅ Indice estratto dall'HTML: {len(book_data['index'])} caratteri")
+                
+                except Exception as html_error:
+                    self.add_log(f"⚠️ Errore nell'estrazione dall'HTML: {str(html_error)}")
+        
+            # Strategia 3: Cerca nel file di contesto
+            if not book_data and os.path.exists("context.txt"):
+                with open("context.txt", "r", encoding="utf-8") as f:
+                    context_content = f.read()
+            
+                data_source = "file di contesto"
+                self.add_log("🔍 Tentativo di estrazione dati dal file di contesto...")
+            
+                import re
+            
+                # Cerca titolo
+                title_match = re.search(r'(?:titolo|title)[:\s]+[""]?([^"\n,;]+)[""]?', context_content, re.IGNORECASE)
+                if title_match:
+                    book_data['title'] = title_match.group(1).strip()
+            
+                # Cerca tono di voce
+                voice_match = re.search(r'(?:tono di voce|voice style)[:\s]+([^\n\.;]+)', context_content, re.IGNORECASE)
+                if voice_match:
+                    book_data['voice_style'] = voice_match.group(1).strip()
+            
+                # Cerca indice
+                index_match = re.search(r'(?:INDICE|INDEX)[:\s]+((?:CAPITOLO|CHAPTER)[\s\S]+?(?=\n\s*\n|\Z))', 
+                                      context_content, re.IGNORECASE | re.DOTALL)
+                if index_match:
+                    book_data['index'] = index_match.group(1).strip()
+        
+            # Se non ci sono dati dall'analisi corrente o dall'HTML, cerca indice e titolo nel file selezionato
+            if not book_data and hasattr(self, 'load_analysis_dropdown') and self.load_analysis_dropdown.value:
+                file_path = self.load_analysis_dropdown.value
+                if os.path.exists(file_path) and file_path.endswith('.html'):
+                    try:
+                        data_source = "file HTML selezionato"
+                        self.add_log(f"🔍 Tentativo di estrazione dati dal file: {file_path}")
+                    
+                        # Leggi il file HTML
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            file_html = f.read()
+                    
+                        # Estrai keyword dal nome del file
+                        import os
+                        filename = os.path.basename(file_path)
+                        keyword_match = re.match(r'([^_]+)_', filename)
+                        if keyword_match:
+                            keyword = keyword_match.group(1).replace("_", " ")
+                            book_data['title'] = keyword
+                            self.add_log(f"✅ Keyword estratta dal nome del file: {keyword}")
+                    
+                        # Ulteriori analisi come sopra...
+                        # (puoi applicare gli stessi pattern regex come nella Strategia 2)
+                    except Exception as file_error:
+                        self.add_log(f"⚠️ Errore nell'estrazione dal file HTML: {str(file_error)}")
+        
+            # Opzione failsafe: se ancora non abbiamo dati sufficienti, crea almeno un indice generico
+            if not book_data.get('index') and book_data.get('title'):
+                book_title = book_data['title']
+                # Crea un indice basato sul titolo
+                book_data['index'] = f"""INTRODUZIONE
+
+    CAPITOLO 1: Fondamenti di {book_title}
+
+    CAPITOLO 2: Principali tecniche
+
+    CAPITOLO 3: Applicazioni pratiche
+
+    CAPITOLO 4: Casi di studio
+
+    CAPITOLO 5: Strategie avanzate
+
+    CONCLUSIONE
+    """
+                self.add_log("ℹ️ Creato indice generico basato sul titolo")
+            
+            # Strategia di fallback finale
+            if not book_data:
+                self.add_log("⚠️ Nessun dato trovato, utilizzo valori predefiniti")
+            
+                # Estrai almeno il titolo dal file selezionato
+                if hasattr(self, 'load_analysis_dropdown') and self.load_analysis_dropdown.value:
+                    file_path = self.load_analysis_dropdown.value
+                    file_name = os.path.basename(file_path)
+                    if '_' in file_name:
+                        title = file_name.split('_')[0].replace('_', ' ')
+                        book_data['title'] = title
+            
+                # Set di valori predefiniti
+                if not book_data.get('title'):
+                    book_data['title'] = "Nuovo Libro"
+                if not book_data.get('voice_style'):
+                    book_data['voice_style'] = "Formale e informativo"
+                if not book_data.get('index'):
+                    book_data['index'] = """INTRODUZIONE
+
+    CAPITOLO 1: Fondamenti
+
+    CAPITOLO 2: Metodologia
+
+    CAPITOLO 3: Applicazioni pratiche
+
+    CAPITOLO 4: Casi di studio
+
+    CONCLUSIONE"""
+        
+            # Log dei risultati
+            if book_data:
+                self.add_log(f"✅ Dati estratti con successo da {data_source}")
+                self.add_log(f"📊 Campi trovati: {', '.join(book_data.keys())}")
+            else:
+                self.add_log("⚠️ Nessun dato estraibile trovato")
+            
+            return book_data
+        
+        except Exception as e:
+            self.add_log(f"❌ Errore nell'estrazione dei dati: {str(e)}")
+            import traceback
+            self.add_log(traceback.format_exc())
+            return {}
+
+
+    # ——————————————————————————————————
+    # Deleghe ai generatori di libro
+    # ——————————————————————————————————
+    def generate_book_crisp(self, book_title, book_language, voice_style, book_index):
+        return generate_book_crisp(
+            book_title, book_language, voice_style, book_index,
+            crisp_framework=self.crisp,
+            driver=self.driver,
+            chat_manager=self.chat_manager,
+            current_analysis=self.current_analysis
+        )
+
+    def generate_book_legacy(self, book_title, book_language, voice_style, book_index):
+        return generate_book_legacy(
+            book_title, book_language, voice_style, book_index,
+            driver=self.driver,
+            chat_manager=self.chat_manager
+        )
+
+    def generate_book(self, book_title, book_language, voice_style, book_index):
+        return generate_book(
+            book_title, book_language, voice_style, book_index,
+            driver=self.driver,
+            chat_manager=self.chat_manager,
+            current_analysis=self.current_analysis
+        )
+
+
+    # … metodi delega, callback e orchestrazione …
 
     # Metodi che delegano le operazioni al DatabaseManager
     def recupera_ultimo_progetto(self):
@@ -166,115 +500,31 @@ class AIBookBuilder:
     
         return self.chat_manager.get_log_history_string()
 
-    def resume_analysis(self, project_id, selected_phases=None):
-        """
-        Riprende un'analisi esistente eseguendo fasi specifiche.
     
-        Args:
-            project_id: ID del progetto da riprendere
-            selected_phases: Lista di fasi da eseguire (opzionale)
-        
-        Returns:
-            str: Log dell'operazione
-        """
-        try:
-            self.add_log(f"🔄 Ripresa analisi per progetto ID: {project_id}")
-        
-            # Recupera i dati del progetto
-            project_data = self.crisp._load_project_data(project_id)
-            if not project_data:
-                return self.add_log(f"❌ Progetto ID {project_id} non trovato!")
-        
-            # Imposta il progetto come analisi corrente
-            self.current_analysis = {
-                'crisp_project_id': project_id,
-                'project_data': project_data,
-                'KEYWORD': project_data.get('KEYWORD', 'unknown')
-            }
-        
-            # Se non ci sono fasi specificate, usa tutte le rimanenti
-            if not selected_phases:
-                # Determina qual è l'ultima fase eseguita
-                last_phase = self.crisp._get_last_executed_step(project_id)
-                if last_phase:
-                    # Trova l'indice della fase nell'elenco completo
-                    all_phases = ["CM-1", "CM-2", "CM-3", "CM-4", "CM-5", "CM-6", "CM-7", "CM-8"]
-                    try:
-                        last_index = all_phases.index(last_phase)
-                        # Seleziona tutte le fasi successive
-                        selected_phases = all_phases[last_index+1:]
-                    except ValueError:
-                        # Se la fase non è nell'elenco standard, usa tutte le fasi
-                        selected_phases = all_phases
-                else:
-                    # Se non c'è una fase precedente, usa tutte le fasi
-                    selected_phases = ["CM-1", "CM-2", "CM-3", "CM-4", "CM-5", "CM-6", "CM-7", "CM-8"]
-        
-            # Se ci sono fasi da eseguire, procedi
-            if selected_phases:
-                self.add_log(f"🔍 Ripresa con fasi: {', '.join(selected_phases)}")
-            
-                # Definisci la funzione executor
-                def process_prompt(prompt_text):
-                    self.add_log(f"Elaborazione prompt: {len(prompt_text)} caratteri")
-                    response = self.send_to_genspark(prompt_text)
-                    return response
-            
-                # Esegui le fasi selezionate una per una
-                execution_history = []
-                current_data = project_data.copy()
-            
-                for phase_id in selected_phases:
-                    self.add_log(f"🔄 Esecuzione fase {phase_id}")
-                
-                    # Esegui la singola fase
-                    updated_data, phase_result, extracted_data = self.crisp.execute_step(
-                        phase_id, 
-                        current_data.copy(), 
-                        process_prompt
-                    )
-                
-                    # Aggiorna i dati correnti con i risultati della fase
-                    current_data.update(updated_data)
-                
-                    # Aggiungi alla storia di esecuzione
-                    execution_history.append({
-                        'step_id': phase_id,
-                        'result': phase_result,
-                        'extracted_data': extracted_data
-                    })
-            
-                # Aggiorna l'analisi corrente con i nuovi dati
-                self.current_analysis['project_data'] = current_data
-                self.current_analysis['execution_history'] = execution_history
-            
-                self.add_log("✅ Ripresa analisi completata con successo")
-            else:
-                self.add_log("⚠️ Nessuna fase da eseguire - l'analisi è già completa")
-        
-            # Carica i risultati aggiornati
-            self.load_analysis_results()
-        
-            return self.chat_manager.get_log_history_string()
-        
-        except Exception as e:
-            self.add_log(f"❌ Errore nella ripresa dell'analisi: {str(e)}")
-            import traceback
-            self.add_log(traceback.format_exc())
-            return self.chat_manager.get_log_history_string()
 
     def load_projects_list(self):
-        """Delega l'operazione al DatabaseManager"""
-        # Ottieni una lista di stringhe semplici dal DatabaseManager
-        project_names = self.db_manager.load_projects_list()
-    
-        # Il dropdown è configurato con type="value", quindi può accettare una lista di stringhe semplici
-        # Non è necessario convertire in tuple (index, value)
-        if hasattr(self, 'projects_list') and self.projects_list is not None:
-            self.projects_list.choices = project_names
-            self.add_log(f"✅ Dropdown aggiornato con {len(project_names)} progetti")
-    
-        return project_names
+        """Elenca i file di analisi presenti nella cartella locale, ordinati per data."""
+        try:
+            files = [
+                f for f in os.listdir(ANALYSIS_DIR)
+                if f.lower().endswith((".txt", ".json", ".html", ".docx"))
+            ]
+        except FileNotFoundError:
+            files = []
+
+        # Ordina dal più recente al più vecchio
+        files.sort(
+            key=lambda f: os.path.getmtime(os.path.join(ANALYSIS_DIR, f)),
+            reverse=True
+        )
+
+        # Aggiorna il dropdown
+        if hasattr(self, 'analysis_source_dropdown'):
+            self.analysis_source_dropdown.choices = files
+            self.add_log(f"✅ Dropdown file di analisi aggiornato: {len(files)} file trovati")
+
+        return files
+
 
     def diagnose_and_fix_database(self):
         """Diagnostica e corregge problemi con il database"""
@@ -405,6 +655,11 @@ class AIBookBuilder:
         return self.db_manager.get_database_stats()
 
     # FINE - Metodi che delegano le operazioni al DatabaseManager
+
+
+        
+
+    
 
     def add_log(self, message):
             """Delega il logging al ChatManager"""
@@ -646,78 +901,7 @@ class AIBookBuilder:
         self.add_log(f"Fasi selezionate per salvataggio: {selected_phases}")
         return selected_phases
 
-    def _analyze_market_crisp(self, book_type, keyword, language, market, selected_phases=None):
-        """
-        Analizza il mercato usando il framework CRISP.
-        Delega alla funzione in framework/analysis/market_analysis.py
-
-        Args:
-            book_type: Tipo di libro
-            keyword: Keyword principale
-            language: Lingua dell'output
-            market: Mercato di riferimento
-            selected_phases: Lista di fasi selezionate da eseguire (opzionale)
-
-        Returns:
-            str: Log dell'operazione
-        """
-        # Log di debug per verificare i CheckboxGroup
-        self.add_log(f"DEBUG: crisp_phase_checkboxes esiste: {hasattr(self, 'crisp_phase_checkboxes')}")
     
-        # Se non sono state specificate fasi, ottienile dal CheckboxGroup
-        if not selected_phases:
-            selected_phases = []
-        
-            if hasattr(self, 'crisp_phase_checkboxes') and self.crisp_phase_checkboxes is not None:
-                try:
-                    # Ottieni tutte le fasi selezionate dal CheckboxGroup
-                    selected_values = self.crisp_phase_checkboxes.value
-                    self.add_log(f"DEBUG: Valori selezionati da crisp_phase_checkboxes: {selected_values}")
-                
-                    import re
-                    for selected_value in selected_values:
-                        # Estrae l'ID di fase dalla stringa selezionata (es. "CM-1: Analisi del mercato...")
-                        # Supporta sia il formato CM-1, CS-1, CP-1, CPM-1 ecc.
-                        match = re.match(r'([A-Z]+-[0-9A-Z]+):', selected_value)
-                        if match:
-                            phase_id = match.group(1)
-                            selected_phases.append(phase_id)
-                            self.add_log(f"📊 Fase CRISP selezionata: {phase_id}")
-                except Exception as e:
-                    self.add_log(f"⚠️ Errore nella lettura del CheckboxGroup: {str(e)}")
-        
-            # Se nessuna fase è stata trovata, usa CM-1 come default
-            if not selected_phases:
-                selected_phases = ["CM-1"]
-                self.add_log("⚠️ Nessuna fase CRISP trovata, uso CM-1 come default")
-
-        self.add_log(f"🔍 Esecuzione selettiva delle fasi CRISP: {', '.join(selected_phases)}")
-
-        # Importa on-demand per evitare dipendenze circolari
-        from framework.analysis.market_analysis import analyze_market_crisp
-
-        try:
-            result = analyze_market_crisp(
-                book_type=book_type,
-                keyword=keyword,
-                language=language,
-                market=market,
-                selected_phases=selected_phases,
-                crisp_framework=self.crisp,
-                driver=self.driver,
-                chat_manager=self.chat_manager
-            )
-        
-            # Aggiorna current_analysis se il risultato contiene i dati di progetto
-            if isinstance(result, dict) and 'crisp_project_id' in result:
-                self.current_analysis = result
-        
-            return self.chat_manager.get_log_history_string()
-        except Exception as e:
-            self.add_log(f"❌ Errore durante l'analisi CRISP: {str(e)}")
-            import traceback
-            self.add_log(traceback.format_exc())
-            return f"Errore durante l'analisi: {str(e)}"    
 
     # Definisci una funzione executor che invia il prompt a Genspark
     def execute_prompt(self, prompt_text, step_id=None, project_data=None):
@@ -921,6 +1105,7 @@ class AIBookBuilder:
                             cycle_wait = 20  # 20 secondi per ciclo
                     
                             # Inizializzazione variabili di monitoraggio
+                            terminator_found = False
                             last_length = 0
                             stable_count = 0
                             response_text = None
@@ -970,7 +1155,7 @@ class AIBookBuilder:
                                                             response_text = response_text.split("FINE_RISPOSTA")[0].strip()
                                                         elif "FINE" in response_text:
                                                             response_text = response_text.split("FINE")[0].strip()
-                                                    
+                                                        terminator_found = True
                                                         section_success = True
                                                         break
                                             
@@ -1199,20 +1384,40 @@ class AIBookBuilder:
             
                     # Salva nel contesto
                     try:
-                        # Verifica se il file context.txt esiste
-                        print(f"DEBUG: Tentativo di lettura del file context.txt - Esiste: {os.path.exists('context.txt')}")
-                    
-                        # Salva nel file di contesto
-                        self.chat_manager.save_response(
-                            combined_response,
-                            f"Analisi CRISP 5.0 - {prompt_id_to_use}",
-                            {"prompt_id": prompt_id_to_use, "timestamp": datetime.now().strftime('%Y%m%d_%H%M%S')}
-                        )
-                        self.add_log("✅ Risposta combinata salvata nel contesto")
-                        print("DEBUG: Risposta combinata salvata nel contesto")
+                            print(f"DEBUG: Tentativo di lettura del file context.txt - Esiste: {os.path.exists('context.txt')}")
+
+                            self.chat_manager.save_response(
+                                combined_response,
+                                f"Analisi CRISP 5.0 - {prompt_id_to_use}",
+                                {"prompt_id": prompt_id_to_use, "timestamp": datetime.now().strftime('%Y%m%d_%H%M%S')}
+                            )
+
+                            try:
+                                if hasattr(self, 'driver') and self.driver:
+                                    self.add_log("🧪 Browser attivo rilevato: tentativo di cattura HTML completo da video")
+                                    saved_path = self.save_complete_html_visual()
+
+                                    if saved_path:
+                                        self.last_html_path = saved_path
+                                        self.add_log(f"✅ HTML completo catturato e salvato in: {saved_path}")
+                                    else:
+                                        self.add_log("⚠️ HTML non salvato: save_complete_html() ha restituito None")
+                                        print("DEBUG: save_complete_html() ha restituito None")
+                                        html = self._generate_html_from_context_file()
+                                        self.last_html_path = self._save_formatted_html_to_file(html)
+                                else:
+                                    self.add_log("🧩 Nessun browser attivo. Uso il formatter interno.")
+                                    html = self._generate_html_from_context_file()
+                                    self.last_html_path = self._save_formatted_html_to_file(html)
+                            except Exception as html_error:
+                                self.add_log(f"❌ Errore durante la generazione HTML: {str(html_error)}")
+                                import traceback
+                                print(f"DEBUG: Traceback errore HTML:\n{traceback.format_exc()}")
+
+                            self.add_log("✅ Risposta combinata salvata nel contesto")
+                            print("DEBUG: Risposta combinata salvata nel contesto")
                     except Exception as e:
                         self.add_log(f"⚠️ Errore nel salvare nel contesto: {str(e)}")
-                        print(f"DEBUG: Errore nel salvare nel contesto: {str(e)}")
                         import traceback
                         print(f"DEBUG: Traceback salvataggio contesto:\n{traceback.format_exc()}")
             
@@ -1412,167 +1617,343 @@ class AIBookBuilder:
         )
 
     def save_response_to_project(self, project_data, prompt_id, line, response, is_final):
-        """Salva la risposta nel framework CRISP in modo affidabile"""
-        if not project_data or "PROJECT_ID" not in project_data:
-            self.add_log("⚠️ Impossibile salvare: dati progetto mancanti")
-            return False
 
-        try:
-            # Ottieni la keyword corrente per il nome del file di contesto
-            keyword = project_data.get("KEYWORD", "unknown").strip()
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
-            # Determina in quale fase dell'analisi siamo basato sul prompt_id
-            analysis_phase = "Analisi"
-            if prompt_id:
-                if isinstance(prompt_id, str):
-                    if "market" in prompt_id.lower():
-                        analysis_phase = "Analisi di Mercato"
-                    elif "buyer" in prompt_id.lower():
-                        analysis_phase = "Buyer Persona"
-                    elif "gap" in prompt_id.lower():
-                        analysis_phase = "Gap Analysis"
-    
-            # Anche se keyword è vuota, usa comunque nomi file significativi
-            safe_keyword = "unknown"
-            if keyword:
-                # Sanitizza la keyword per usarla come parte del nome file
-                import re
-                safe_keyword = re.sub(r'[\\/*?:"<>|]', "", keyword).replace(" ", "_")[:30]
-        
-            # Crea nomi file specifici per questa sessione di analisi
-            context_filename = os.path.join(self.context_dir, f"context_{safe_keyword}.txt")
-            html_filename = f"analisi_{safe_keyword}_{timestamp}.html"
-        
-            # Crea la directory output se non esiste
-            os.makedirs("output", exist_ok=True)
-            html_filepath = os.path.join("output", html_filename)
-        
-            # Se è il primo salvataggio per questa keyword, imposta il file di contesto
-            if hasattr(self.chat_manager, 'context_file'):
-                self.chat_manager.context_file = context_filename
-                self.add_log(f"📄 File di contesto impostato a: {context_filename}")
-            
-                # Crea una copia del contesto per questa keyword se non esiste
-                if not os.path.exists(context_filename) and os.path.exists("context.txt"):
-                    import shutil
-                    shutil.copy2("context.txt", context_filename)
-                    self.add_log(f"📄 Creata copia del contesto per keyword: {keyword}")
-    
-            # Salva nel database CRISP
-            success = False
-    
-            # Usa una struttura a cascata per trovare il metodo giusto
-            if hasattr(self.crisp, 'save_incremental_response'):
-                self.crisp.save_incremental_response(
-                    project_data["PROJECT_ID"], 
-                    prompt_id,
-                    line, 
-                    response, 
-                    is_final
-                )
-                success = True
-            elif hasattr(self.crisp, 'crisp') and hasattr(self.crisp.crisp, 'save_incremental_response'):
-                self.crisp.crisp.save_incremental_response(
-                    project_data["PROJECT_ID"], 
-                    prompt_id,
-                    line, 
-                    response, 
-                    is_final
-                )
-                success = True
+            from framework.formatters import process_table_html, process_text
+
+            # All'inizio del metodo save_response_to_project
+            has_terminator = "FINE" in response
+            terminator_pos = response.find("FINE") if has_terminator else -1
+
+            if has_terminator:
+                self.add_log(f"🛑 'FINE' rilevato alla posizione {terminator_pos}")
+                # Imposta l'attributo per uso futuro
+                self.last_response_complete = True
             else:
-                self.add_log("⚠️ Metodo save_incremental_response non trovato")
-    
-            # Salva nel file di testo (sempre)
-            try:
-                # Salva nel file di testo (append per mantenere la storia)
-                with open(context_filename, "a", encoding="utf-8") as f:
-                    f.write(f"\n=== {prompt_id or 'Analisi Legacy'} - {timestamp} ===\n")
-                    f.write(response)
-                    f.write("\n\n")
-                self.add_log(f"💾 Risposta salvata in {context_filename}")
-            
-                # Salva in un file HTML separato (nuovo file per ogni risposta completa)
-                if is_final:
-                    # Crea metadati per il file HTML
-                    metadata = {
-                        "Keyword": keyword,
-                        "Data": datetime.now().strftime('%d/%m/%Y %H:%M:%S'),
-                        "Tipo di analisi": analysis_phase,
-                        "Prompt ID": prompt_id or "N/A",
-                        "Progetto ID": project_data.get("PROJECT_ID", "N/A")
-                    }
-                
-                    # Crea un nuovo file HTML formattato
-                    with open(html_filepath, "w", encoding="utf-8") as f:
-                        # Scrivi l'intestazione HTML
-                        f.write("<!DOCTYPE html>\n<html>\n<head>\n")
-                        f.write("<meta charset='utf-8'>\n")
-                        f.write(f"<title>Analisi {keyword} - {analysis_phase}</title>\n")
-                        f.write("<style>")
-                        f.write("body{font-family:Arial,sans-serif;max-width:800px;margin:auto;padding:20px;}")
-                        f.write("h1,h2{color:#2c3e50;} table{border-collapse:collapse;width:100%;margin:15px 0;}")
-                        f.write("th,td{padding:8px;text-align:left;border:1px solid #ddd;}")
-                        f.write("th{background-color:#f2f2f2;} tr:nth-child(even){background-color:#f9f9f9;}")
-                        f.write("</style>\n")
-                        f.write("</head>\n<body>\n")
-                    
-                        # Intestazione
-                        f.write(f"<h1>Analisi {keyword}</h1>\n")
-                        f.write(f"<h2>{analysis_phase}</h2>\n")
-                    
-                        # Metadati
-                        f.write("<div style='background:#f0f0f0;padding:10px;margin-bottom:20px;border-radius:5px;'>\n")
-                        for key, value in metadata.items():
-                            f.write(f"<p><strong>{key}:</strong> {value}</p>\n")
-                        f.write("</div>\n")
-                    
-                        # Contenuto formattato
-                        formatted_response = response
-                    
-                        # Verifica se i metodi di conversione esistono
-                        if hasattr(self, 'convert_lists_to_html'):
-                            # Converte le liste numeriche o puntate in HTML
-                            formatted_response = self.convert_lists_to_html(formatted_response)
-                    
-                        if hasattr(self, 'convert_tables_to_html'):
-                            # Converte le tabelle in HTML
-                            formatted_response = self.convert_tables_to_html(formatted_response)
-                        else:
-                            # Fallback: converti solo i newline in <br>
-                            formatted_response = formatted_response.replace('\n', '<br>\n')
-                    
-                        f.write("<div class='analysis-content'>\n")
-                        f.write(formatted_response)
-                        f.write("</div>\n")
-                    
-                        # Chiusura
-                        f.write("</body>\n</html>")
-                
-                    self.add_log(f"✅ Report HTML salvato in: {html_filepath}")
-                
-                    # Aggiorna il display dei risultati
-                    if hasattr(self, 'results_display') and self.results_display is not None:
-                        try:
-                            if hasattr(self.results_display, 'update'):
-                                self.results_display.update(value=html_content)
-                            else:
-                                self.results_display.value = html_content
-                            self.add_log("✅ Visualizzazione risultati aggiornata")
-                        except Exception as ui_error:
-                            self.add_log(f"❌ Errore nell'aggiornamento UI: {str(ui_error)}")
+                self.add_log(f"⚠️ Risposta NON contiene terminatore FINE")
+                # Imposta l'attributo per uso futuro
+                self.last_response_complete = False
 
-            except Exception as file_error:
-                self.add_log(f"⚠️ Errore nel salvare nel file: {str(file_error)}")
+            """Salva la risposta nel framework CRISP in modo affidabile"""
+            if not project_data or "PROJECT_ID" not in project_data:
+                self.add_log("⚠️ Impossibile salvare: dati progetto mancanti")
+                return False
+
+            try:
+                # Ottieni la keyword corrente per il nome del file di contesto
+                keyword = project_data.get("KEYWORD", "unknown").strip()
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+                # Determina in quale fase dell'analisi siamo basato sul prompt_id
+                analysis_phase = "Analisi"
+                if prompt_id:
+                    if isinstance(prompt_id, str):
+                        if "market" in prompt_id.lower():
+                            analysis_phase = "Analisi di Mercato"
+                        elif "buyer" in prompt_id.lower():
+                            analysis_phase = "Buyer Persona"
+                        elif "gap" in prompt_id.lower():
+                            analysis_phase = "Gap Analysis"
+
+                # Anche se keyword è vuota, usa comunque nomi file significativi
+                safe_keyword = "unknown"
+                if keyword:
+                    # Sanitizza la keyword per usarla come parte del nome file
+                    import re
+                    safe_keyword = re.sub(r'[\\/*?:"<>|]', "", keyword).replace(" ", "_")[:30]
     
-            return success
+                # Crea nomi file specifici per questa sessione di analisi
+                context_filename = os.path.join(self.context_dir, f"context_{safe_keyword}.txt")
+                html_filename = f"analisi_{safe_keyword}_{timestamp}.html"
+    
+                # Crea la directory output se non esiste
+                os.makedirs("output", exist_ok=True)
+                html_filepath = os.path.join("output", html_filename)
+    
+                # Se è il primo salvataggio per questa keyword, imposta il file di contesto
+                if hasattr(self.chat_manager, 'context_file'):
+                    self.chat_manager.context_file = context_filename
+                    self.add_log(f"📄 File di contesto impostato a: {context_filename}")
         
-        except Exception as e:
-            self.add_log(f"⚠️ Errore nel salvare la risposta: {str(e)}")
-            import traceback
-            self.add_log(traceback.format_exc())
-            return False
+                    # Crea una copia del contesto per questa keyword se non esiste
+                    if not os.path.exists(context_filename) and os.path.exists("context.txt"):
+                        import shutil
+                        shutil.copy2("context.txt", context_filename)
+                        self.add_log(f"📄 Creata copia del contesto per keyword: {keyword}")
+
+                # Salva nel database CRISP
+                success = False
+
+                # Usa una struttura a cascata per trovare il metodo giusto
+                if hasattr(self.crisp, 'save_incremental_response'):
+                    self.crisp.save_incremental_response(
+                        project_data["PROJECT_ID"], 
+                        prompt_id,
+                        line, 
+                        response, 
+                        is_final
+                    )
+                    success = True
+                elif hasattr(self.crisp, 'crisp') and hasattr(self.crisp.crisp, 'save_incremental_response'):
+                    self.crisp.crisp.save_incremental_response(
+                        project_data["PROJECT_ID"], 
+                        prompt_id,
+                        line, 
+                        response, 
+                        is_final
+                    )
+                    success = True
+                else:
+                    self.add_log("⚠️ Metodo save_incremental_response non trovato")
+
+                # Salva nel file di testo (sempre)
+                try:
+                    # Salva nel file di testo (append per mantenere la storia)
+                    with open(context_filename, "a", encoding="utf-8") as f:
+                        # Intestazione che identifica la sezione
+                        f.write(f"\n=== {prompt_id or 'Analisi Legacy'}: {keyword} - {safe_keyword} - {timestamp} ===\n")
+    
+                        # Se la risposta inizia con il numero della domanda (es. "5) Identifica..."), rimuovilo
+                        if re.match(r'^\s*\d+[\)\.]\s+', response):
+                            # Prova a trovare una riga vuota dopo la domanda
+                            lines = response.split('\n')
+                            start_line = 0
+                            first_content_line = 1  # Default: inizia dalla seconda riga
+        
+                            # Cerca una riga vuota dopo la prima riga (la domanda)
+                            for i, line in enumerate(lines):
+                                if i > 0 and not line.strip():  # Riga vuota trovata dopo la prima riga
+                                    start_line = i + 1
+                                    break
+        
+                            if start_line > 0 and start_line < len(lines):
+                                # Prendi tutto dopo la riga vuota
+                                response_only = '\n'.join(lines[start_line:])
+                                self.add_log(f"✂️ Domanda rimossa dalla risposta (inizio dalla riga {start_line+1})")
+                                f.write(response_only)
+                            else:
+                                # Se non troviamo una riga vuota, usa il pattern regex per rimuovere la prima riga
+                                response_only = re.sub(r'^\s*\d+[\)\.]\s+.*?[\n\r]+', '', response)
+                                self.add_log("✂️ Prima riga della domanda rimossa dalla risposta")
+                                f.write(response_only)
+                        else:
+                            # Se non sembra iniziare con una domanda numerata, lascia invariato
+                            f.write(response)
+    
+                        f.write("\n\n")
+
+                    self.add_log(f"💾 Risposta salvata in {context_filename}")
+        
+                    # Salva in un file HTML separato (nuovo file per ogni risposta completa)
+                    if is_final:
+                        # Crea metadati per il file HTML
+                        metadata = {
+                            "Keyword": keyword,
+                            "Data": datetime.now().strftime('%d/%m/%Y %H:%M:%S'),
+                            "Tipo di analisi": analysis_phase,
+                            "Prompt ID": prompt_id or "N/A",
+                            "Progetto ID": project_data.get("PROJECT_ID", "N/A")
+                        }
+            
+                        # Crea CSS avanzato per tabelle e formattazione
+                        css_styles = """
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            line-height: 1.6; 
+                            max-width: 1000px; 
+                            margin: 0 auto; 
+                            padding: 20px;
+                            background-color: #f9f9f9;
+                        }
+                        .header {
+                            background-color: #2563eb;
+                            color: white;
+                            padding: 20px;
+                            text-align: center;
+                            border-radius: 8px;
+                            margin-bottom: 20px;
+                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                        }
+                        h1, h2, h3, h4 { 
+                            color: #2563eb; 
+                            margin-top: 24px; 
+                            margin-bottom: 16px; 
+                        }
+                        .metadata {
+                            background-color: #f0f4f8;
+                            padding: 15px;
+                            border-radius: 8px;
+                            margin-bottom: 20px;
+                            border-left: 4px solid #2563eb;
+                        }
+                        table { 
+                            border-collapse: collapse; 
+                            width: 100%; 
+                            margin: 20px 0;
+                            background-color: white;
+                            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                        }
+                        th, td { 
+                            border: 1px solid #ddd; 
+                            padding: 12px; 
+                            text-align: left; 
+                        }
+                        th { 
+                            background-color: #f2f2f2; 
+                            font-weight: bold;
+                        }
+                        tr:nth-child(even) { 
+                            background-color: #f9f9f9; 
+                        }
+                        .content {
+                            background-color: white;
+                            border-radius: 8px;
+                            padding: 20px;
+                            margin-top: 20px;
+                            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                        }
+                        ul, ol {
+                            margin-top: 15px;
+                            margin-bottom: 15px;
+                        }
+                        li {
+                            margin-bottom: 8px;
+                        }
+                        """
+                
+                        # Formatta il testo
+                        formatted_response = response
+                
+                        # Conversione migliorata di tabelle
+                        import re
+                
+                        # Rileva tabelle in formato markdown
+                        table_pattern = r'(\|[^\n]+\|\n\|[\-\|: ]+\|\n(?:\|[^\n]+\|\n?)+)'
+                
+                        # Importa la funzione process_table_html dal modulo formatters
+                        from framework.formatters import process_table_html, process_text
+
+                        # Funzione wrapper che utilizza process_table_html
+                        def format_markdown_table(match):
+                            table_text = match.group(1)
+                            return process_table_html(table_text)
+
+                        # Applica la formattazione delle tabelle
+                        formatted_response = re.sub(table_pattern, format_markdown_table, formatted_response, flags=re.MULTILINE)
+
+                        # Converti elenchi puntati e numerati
+                        formatted_response = self.convert_lists_to_html(formatted_response)
+
+                        # Converti markdown di base in HTML
+                        formatted_response = formatted_response.replace('\n\n', '</p><p>')
+                        formatted_response = f"<p>{formatted_response}</p>"
+                        formatted_response = formatted_response.replace('**', '<strong>').replace('**', '</strong>')
+                        formatted_response = formatted_response.replace('*', '<em>').replace('*', '</em>')
+
+                        # Aggiungi classi alle tabelle esistenti
+                        formatted_response = formatted_response.replace('<table>', '<table class="data-table">')
+
+                        # Creiamo l'HTML completo
+                        html_content = f"""<!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <title>Analisi {keyword} - {analysis_phase}</title>
+                            <style>
+                            {css_styles}
+                            </style>
+                        </head>
+                        <body>
+                            <div class="header">
+                                <h1>Analisi: {keyword}</h1>
+                                <p>{analysis_phase}</p>
+                            </div>
+
+                            <div class="metadata">
+                        """
+
+                        # Aggiungi metadati
+                        for key, value in metadata.items():
+                            html_content += f"<p><strong>{key}:</strong> {value}</p>\n"
+
+                        html_content += """
+                            </div>
+
+                            <div class="content">
+                        """
+
+                        html_content += formatted_response
+
+                        html_content += """
+                            </div>
+                        </body>
+                        </html>
+                        """
+
+                        # Salva il file HTML
+                        with open(html_filepath, "w", encoding="utf-8") as f:
+                            f.write(html_content)
+
+                        self.add_log(f"✅ Report HTML completo salvato in: {html_filepath}")
+
+                        # Apri automaticamente il file nel browser
+                        import webbrowser
+                        try:
+                            file_path = os.path.abspath(html_file).replace('\\', '/')
+                            webbrowser.open("file:///" + file_path)    
+                            self.add_log("✅ File HTML aperto nel browser")
+                        except Exception as browser_error:
+                            self.add_log(f"⚠️ Impossibile aprire il browser: {str(browser_error)}")
+                
+                        # Crea anche una directory per i file formattati Genspark
+                        os.makedirs("output/genspark_formatted", exist_ok=True)
+                        genspark_html_path = os.path.join("output/genspark_formatted", f"{safe_keyword}_genspark_{timestamp}.html")
+                
+                        # Salva una copia del contesto in HTML stilizzato di alta qualità
+                        # try:
+                            # Se esiste il metodo per generare HTML formattato, usalo
+                        #    if hasattr(self, '_generate_html_from_context_file'):
+                                # Assicurati che l'attributo _analysis_session_id esista
+                        #        if not hasattr(self, '_analysis_session_id'):
+                        #            import uuid
+                        #            self._analysis_session_id = str(uuid.uuid4())[:8]
+                            
+                        #        formatted_html = self._generate_html_from_context_file()
+                        #        if formatted_html:
+                        #            with open(genspark_html_path, "w", encoding="utf-8") as f:
+                        #                f.write(formatted_html)
+                        #            self.add_log(f"✅ HTML formattato Genspark salvato in: {genspark_html_path}")
+                                   
+                                     # Memorizza il percorso per uso futuro
+                        #             self.last_html_path = genspark_html_path
+                        # except Exception as html_error:
+                        #    self.add_log(f"⚠️ Errore nella generazione HTML formattato: {str(html_error)}")
+                
+                        # Aggiorna il display dei risultati con l'HTML completo
+                        if hasattr(self, 'results_display') and self.results_display is not None:
+                            try:
+                                if hasattr(self.results_display, 'update'):
+                                    self.results_display.update(value=html_content)
+                                else:
+                                    self.results_display.value = html_content
+                                self.add_log("✅ Visualizzazione risultati aggiornata")
+                            except Exception as ui_error:
+                                self.add_log(f"❌ Errore nell'aggiornamento UI: {str(ui_error)}")
+                        
+                        # Se vogliamo aprire il file nel browser
+                        # import webbrowser
+                        # webbrowser.open(f"file:///{os.path.abspath(html_filepath)}")
+
+                except Exception as file_error:
+                    self.add_log(f"⚠️ Errore nel salvare nel file: {str(file_error)}")
+
+                return success
+    
+            except Exception as e:
+                self.add_log(f"⚠️ Errore nel salvare la risposta: {str(e)}")
+                import traceback
+                self.add_log(traceback.format_exc())
+                return False
     
     def convert_lists_to_html(self, text):
         """Converte liste testuali in liste HTML"""
@@ -1733,393 +2114,7 @@ class AIBookBuilder:
     
         return result
 
-    def analyze_market(self, book_type, keyword, language, market, analysis_prompt=None, use_crisp=None):
-        """
-        Analizza il mercato dei libri per la keyword specificata.
-
-        Args:
-            book_type: Tipo di libro
-            keyword: Keyword principale
-            language: Lingua dell'output
-            market: Mercato di riferimento
-            analysis_prompt: Prompt personalizzato (opzionale)
-            use_crisp: Se True, usa il framework CRISP; se None, usa il valore di default
-
-        Returns:
-            str: Log dell'operazione
-        """
-        
-        # Salva i parametri dell'analisi corrente per un eventuale riavvio
-        self.current_analysis_params = {
-            'book_type': book_type,
-            'keyword': keyword,
-            'language': language,
-            'market': market,
-            'analysis_prompt': analysis_prompt,
-            'use_crisp': use_crisp,
-            'selected_phases': self.get_selected_phases()  # Metodo aggiuntivo che restituisce le fasi selezionate
-        }
-
-
-
-        # Aggiungi log dettagliati per il debug
-        if hasattr(self, 'analysis_type_radio'):
-            self.add_log(f"DEBUG: analysis_type_radio esiste: valore = {self.analysis_type_radio.value}")
-        else:
-            self.add_log("DEBUG: analysis_type_radio non esiste!")
-        try:
-            # Verifica se esiste già un'analisi per questa keyword
-            exists, project_id, creation_date = self.check_existing_analysis(keyword)
-
-            if exists:
-                # Crea un messaggio di avviso HTML per la UI
-                warning_html = f"""
-                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <span class="text-yellow-400 text-xl">⚠️</span>
-                        </div>
-                        <div class="ml-3">
-                            <h3 class="text-lg font-medium text-yellow-800">Analisi esistente rilevata</h3>
-                            <p class="text-yellow-700">Esiste già un'analisi per la keyword '{keyword}' creata il {creation_date}.</p>
-                            <div class="mt-3">
-                                <button id="new-analysis-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded mr-2" 
-                                        onclick="updateAnalysisChoice('1')">Crea nuova analisi</button>
-                                <button id="view-analysis-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded mr-2" 
-                                        onclick="updateAnalysisChoice('2')">Visualizza esistente</button>
-                                <button id="resume-analysis-btn" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-1 px-3 rounded" 
-                                        onclick="updateAnalysisChoice('3')">Riprendi dall'ultima fase</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <script>
-                function updateAnalysisChoice(choice) {{
-                    /* Nascondi il box di avviso */
-                    const warningBox = document.querySelector('.bg-yellow-50');
-                    if (warningBox) warningBox.style.display = 'none';
-
-                    /* Notifica l'utente della scelta */
-                    const resultBox = document.createElement('div');
-                    resultBox.className = 'bg-blue-50 p-3 rounded-lg';
-
-                    if (choice === '1') {{
-                        resultBox.innerHTML = '<p>Creazione nuova analisi in corso...</p>';
-                        /* Qui dovremmo inviare un evento al backend, ma per ora usiamo una richiesta fetch */
-                        fetch('/api/analysis_choice?choice=1&project_id={project_id}')
-                            .then(response => console.log('Choice registered'));
-                    }} else if (choice === '2') {{
-                        resultBox.innerHTML = '<p>Caricamento analisi esistente...</p>';
-                        fetch('/api/analysis_choice?choice=2&project_id={project_id}')
-                            .then(response => console.log('Choice registered'));
-                    }} else if (choice === '3') {{
-                        resultBox.innerHTML = '<p>Ripresa analisi in corso...</p>';
-                        fetch('/api/analysis_choice?choice=3&project_id={project_id}')
-                            .then(response => console.log('Choice registered'));
-                    }}
-
-                    /* Aggiungi la notifica alla pagina */
-                    warningBox.parentNode.appendChild(resultBox);
-                }}
-                </script>
-                """
-
-                # Per la console di log, usa un formato più semplice
-                warning_text = f"""⚠️ ATTENZIONE: Esiste già un'analisi per la keyword '{keyword}'
-            Creata il: {creation_date}
-
-            Vuoi:
-            1) Creare una nuova analisi comunque
-            2) Visualizzare l'analisi esistente
-            3) Riprendere dall'ultima fase completata
-            """
     
-                self.add_log(warning_text)
-    
-                # Se disponiamo di una UI più semplice (file di testo), usiamo input()
-                # Altrimenti il codice HTML mostrerà pulsanti nell'interfaccia
-                try:
-                    # Controlla se siamo in modalità console o UI
-                    if hasattr(self, 'results_display'):
-                        # Modalità UI: aggiorna l'HTML e attendi la risposta asincrona
-                        if hasattr(self.results_display, 'update'):
-                            self.results_display.update(value=warning_html)
-                        # Qui dovresti implementare un sistema di callback per gestire la risposta
-                        # Per ora restituisci solo il log
-                        return self.chat_manager.get_log_history_string()
-                    else:
-                        # Modalità console
-                        choice = input("Inserisci il numero della tua scelta (1/2/3): ")
-            
-                        if choice == "2":
-                            # Carica i dettagli del progetto esistente
-                            details = self.load_project_details(project_id)
-                            self.add_log(details)
-                            return self.chat_manager.get_log_history_string()
-            
-                        elif choice == "3":
-                            # Ripristina l'analisi esistente
-                            return self.ripristina_analisi_da_database(project_id)
-            
-                        # Se choice è "1" o altro, continua normalmente con una nuova analisi
-                except Exception as input_error:
-                    self.add_log(f"Errore nell'interazione con l'utente: {str(input_error)}")
-                    self.add_log("Procedo con una nuova analisi...")
-                    # Continua con l'analisi normalmente
-
-            # Da qui in poi è il codice originale per l'analisi
-
-            # 1) Verifico login e driver
-            from ai_interfaces.browser_manager import get_connection_status
-            if not get_connection_status() or not self.driver:
-                return self.add_log("Errore: Devi prima connetterti!")
-
-            # 2) Avvio analisi
-            self.add_log(f"Avvio analisi di mercato per: {keyword}")
-        
-            # Inizializza/reimposta lo stato delle domande
-            if not hasattr(self, 'question_status'):
-                self.question_status = {}
-            else:
-                self.question_status.clear()
-
-            # 3) Decido se usare CRISP o il metodo legacy in base all'attributo selected_analysis_type
-            # Usa l'attributo invece del componente UI direttamente
-            if hasattr(self, 'selected_analysis_type'):
-                analysis_type = self.selected_analysis_type
-                self.add_log(f"DEBUG: Usando tipo di analisi salvato: {analysis_type}")
-            else:
-                analysis_type = "CRISP"  # Fallback al default
-                self.add_log(f"DEBUG: Nessun tipo di analisi salvato, usando default: {analysis_type}")
-
-            # Imposta use_crisp_for_this_run in base a analysis_type, a meno che non sia esplicitamente passato
-            use_crisp_for_this_run = (analysis_type == "CRISP") if use_crisp is None else use_crisp
-
-            self.add_log(f"ℹ️ Modalità analisi selezionata: {analysis_type} (use_crisp = {use_crisp_for_this_run})")
-
-            # Ottieni le fasi selezionate in base al tipo di analisi
-            selected_phases = []
-            if analysis_type == "CRISP":
-                # Debug dello stato dei checkbox CRISP
-                self.add_log("DEBUG - Stato dei checkbox CRISP:")
-                try:
-                    # Ottieni i valori selezionati dal CheckboxGroup
-                    selected_values = self.crisp_phase_checkboxes.value
-                    self.add_log(f"DEBUG: Valori selezionati nel CheckboxGroup CRISP: {selected_values}")
-        
-                    import re
-                    for selected_value in selected_values:
-                        # Estrai l'ID della fase dal valore selezionato (es. "CM-1: Descrizione")
-                        match = re.match(r'([A-Z]+-[0-9A-Z]+):', selected_value)
-                        if match:
-                            phase_id = match.group(1)
-                            selected_phases.append(phase_id)
-                            self.add_log(f"DEBUG: Aggiunta fase CRISP {phase_id}")
-                except Exception as e:
-                    self.add_log(f"ERRORE nel leggere CheckboxGroup CRISP: {str(e)}")
-                             
-                self.add_log(f"🔍 Fasi CRISP selezionate: {', '.join(selected_phases)}")
-            else:  # Legacy
-                # Debug dello stato di tutti i checkbox Legacy
-                self.add_log("DEBUG - Stato dei checkbox Legacy:")
-                # Inizializziamo le variabili all'inizio
-                any_true = False
-                all_true = False
-    
-                try:
-                    # Ottieni i valori selezionati dal CheckboxGroup
-                    selected_values = self.legacy_phase_checkboxes.value
-                    self.add_log(f"DEBUG: Valori selezionati nel CheckboxGroup Legacy: {selected_values}")
-        
-                    # Aggiorniamo le variabili solo dopo aver ottenuto i valori
-                    any_true = len(selected_values) > 0
-                    all_true = len(selected_values) == len(self.legacy_phase_checkboxes.choices)
-        
-                    import re
-                    for selected_value in selected_values:
-                        # Estrai l'ID della fase dal valore selezionato (es. "LM-1: Descrizione")
-                        match = re.match(r'([A-Z]+-\d+):', selected_value)
-                        if match:
-                            phase_id = match.group(1)
-                            # Estrai il numero dalla fase (es. da LM-1 estrae 1)
-                            number_match = re.search(r'-(\d+)', phase_id)
-                            if number_match:
-                                phase_number = int(number_match.group(1))
-                                selected_phases.append(phase_number)
-                                self.add_log(f"DEBUG: Aggiunta fase Legacy {phase_id} (numero {phase_number})")
-        
-                except Exception as e:
-                    self.add_log(f"ERRORE nel leggere CheckboxGroup Legacy: {str(e)}")
-                    # Se c'è un'eccezione, manteniamo i valori di default
-                    # any_true e all_true sono già inizializzati a False
-        
-                # Se tutti i checkbox risultano True, potrebbe esserci un bug
-                if all_true and len(self.legacy_phase_checkboxes.choices) > 1:
-                    self.add_log("⚠️ ATTENZIONE: Tutti i checkbox risultano selezionati, possibile bug")
-        
-                    # Controlla i log precedenti per vedere quali checkbox sono stati davvero selezionati
-                    if hasattr(self, 'chat_manager') and hasattr(self.chat_manager, 'get_log_history'):
-                        log_lines = self.chat_manager.get_log_history()
-                        selected_from_logs = []
-            
-                        # Cerca le linee di log che indicano quali checkbox sono stati selezionati
-                        import re
-                        for line in log_lines[-50:]:  # Considera solo le ultime 50 linee
-                            match = re.search(r'Legacy checkbox (\d+): True', line)
-                            if match:
-                                phase_id = int(match.group(1))
-                                selected_from_logs.append(phase_id)
-            
-                        # Se troviamo checkbox selezionati nei log, usa quelli
-                        if selected_from_logs:
-                            selected_phases = list(set(selected_from_logs))  # Rimuovi duplicati
-                            self.add_log(f"🔄 Corretto selected_phases dai log: {selected_phases}")
-
-                # Se non è stato selezionato nessun checkbox ma i log mostrano checkbox selezionati
-                elif not any_true and hasattr(self, 'chat_manager') and hasattr(self.chat_manager, 'get_log_history'):
-                    log_lines = self.chat_manager.get_log_history()
-                    selected_from_logs = []
-        
-                    # Cerca le linee di log che indicano quali checkbox sono stati selezionati
-                    import re
-                    for line in log_lines[-50:]:  # Considera solo le ultime 50 linee
-                        match = re.search(r'Legacy checkbox (\d+): True', line)
-                        if match:
-                            phase_id = int(match.group(1))
-                            selected_from_logs.append(phase_id)
-        
-                    # Se troviamo checkbox selezionati nei log, usa quelli
-                    if selected_from_logs:
-                        selected_phases = list(set(selected_from_logs))  # Rimuovi duplicati
-                        self.add_log(f"🔄 Impostato selected_phases dai log: {selected_phases}")
-            
-                self.add_log(f"🔍 Fasi Legacy selezionate: {', '.join([str(p) for p in selected_phases])}")
-
-            # Verifica finale se ci sono fasi selezionate
-            if not selected_phases:
-                return self.add_log("⚠️ Nessuna fase selezionata! Seleziona almeno una fase dell'analisi.")
-
-            # Aggiungi formattazione HTML se disponibile
-            if use_crisp_for_this_run:
-                # Approccio CRISP con fasi selezionate
-                result = self._analyze_market_crisp(book_type, keyword, language, market, selected_phases)
-
-                # AGGIUNTO: Salva i risultati dell'analisi nel contesto
-                try:
-                    # Ottieni il contesto dal current_analysis
-                    context = self.current_analysis.get('project_data', {}) if hasattr(self, 'current_analysis') else {}
-
-                    # Metadati per il contesto
-                    metadata = {
-                        "type": "market_analysis_crisp",
-                        "book_type": book_type,
-                        "keyword": keyword,
-                        "language": language,
-                        "market": market,
-                        "timestamp": datetime.now().strftime('%Y%m%d_%H%M%S')
-                    }
-
-                    # Salva nel file di contesto
-                    if hasattr(self, 'chat_manager'):
-                        self.chat_manager.save_response(
-                            result,
-                            f"Analisi CRISP: {keyword}",
-                            metadata
-                        )
-                        self.add_log(f"✅ Risultati dell'analisi CRISP salvati nel contesto ({len(result)} caratteri)")
-                except Exception as save_error:
-                    self.add_log(f"⚠️ Errore nel salvataggio del contesto: {str(save_error)}")
-
-                # Se abbiamo la funzione di formattazione HTML e un display risultati, usiamoli
-                if hasattr(self, 'format_analysis_results_html') and hasattr(self, 'results_display'):
-                    try:
-                        # Ottieni il contesto dal current_analysis
-                        context = self.current_analysis.get('project_data', {}) if hasattr(self, 'current_analysis') else {}
-
-                        # Genera HTML formattato
-                        html_results = self.format_analysis_results_html(keyword, market, book_type, language, context)
-
-     
-
-                        # Aggiorna il display dei risultati
-                        # Usa assegnazione diretta invece di update
-                        if hasattr(self.results_display, 'update'):
-                            self.results_display.update(value=html_results)
-                        else:
-                            self.results_display.value = html_results
-                    except Exception as format_error:
-                        self.add_log(f"Errore nella formattazione HTML: {str(format_error)}")
-            else:
-                # Approccio legacy con fasi selezionate
-                if analysis_prompt is None:
-                    analysis_prompt = self.default_analysis_prompt
-        
-                # Filtra il prompt prima di passarlo all'analisi
-                filtered_prompt = self._filter_legacy_prompt_sections(analysis_prompt, selected_phases)
-    
-                # Esegui l'analisi legacy con il prompt filtrato
-                result = self._analyze_market_legacy(book_type, keyword, language, market, filtered_prompt)
-        
-                # AGGIUNTO: Salva i risultati dell'analisi nel contesto
-                try:
-                    # Metadati per il contesto
-                    metadata = {
-                        "type": "market_analysis_legacy",
-                        "book_type": book_type,
-                        "keyword": keyword,
-                        "language": language,
-                        "market": market,
-                        "timestamp": datetime.now().strftime('%Y%m%d_%H%M%S')
-                    }
-            
-                    if hasattr(self, 'chat_manager'):
-                        self.chat_manager.save_response(
-                            result,
-                            f"Analisi Legacy: {keyword}",
-                            metadata
-                        )
-                        self.add_log(f"✅ Risultati dell'analisi legacy salvati nel contesto ({len(result)} caratteri)")
-                except Exception as save_error:
-                    self.add_log(f"⚠️ Errore nel salvataggio del contesto: {str(save_error)}")
-            
-                # Mostra un riepilogo dello stato delle domande
-                if hasattr(self, 'question_status') and self.question_status:
-                    self.add_log("\n=== RIEPILOGO ANALISI ===")
-                    for qnum, status in sorted(self.question_status.items()):
-                        emoji = "✅" if status['success'] else "❌"
-                        chars = status.get('chars', 0)
-                        self.add_log(f"{emoji} Domanda #{qnum}: {status['status']} ({chars} caratteri)")
-    
-                    # Identifica domande fallite o senza risposta
-                    failed_questions = [qnum for qnum, status in self.question_status.items() if not status['success']]
-                    if failed_questions:
-                        self.add_log(f"⚠️ Attenzione: le domande {', '.join(str(q) for q in failed_questions)} potrebbero richiedere nuovi tentativi")
-
-                # Aggiorna lo stato dell'analisi
-                if hasattr(self, 'analysis_status'):
-                    self.analysis_status.update(value="**Stato analisi**: Completata ✅")
-
-                # Verifica che self.results_display e self.analysis_status non siano lo stesso oggetto
-                if hasattr(self, 'results_display') and hasattr(self, 'analysis_status'):
-                    same_object = id(self.results_display) == id(self.analysis_status)
-                    if same_object:
-                        self.add_log("⚠️ results_display e analysis_status sono lo stesso oggetto, evito di caricare i risultati per prevenire sovrascritture")
-                    else:
-                        # Carica i risultati solo se sono oggetti diversi
-                        self.load_analysis_results()
-                else:
-                    # Se uno dei due non esiste, procedi normalmente
-                    self.load_analysis_results()
-
-                self.add_log("📌 Analisi parziale completata. Premi '✅ Completa Analisi' per salvare nel database.")
-
-                return result
-
-        except Exception as e:
-            error_msg = f"Errore durante l'analisi: {str(e)}"
-            self.add_log(error_msg)
-            logging.error(error_msg)
-            return self.chat_manager.get_log_history_string()
 
 
     def load_project_list(self):
@@ -2200,109 +2195,7 @@ class AIBookBuilder:
             use_crisp=params['use_crisp']
         )
 
-    def _analyze_market_legacy(self, book_type, keyword, language, market, analysis_prompt):
-        """
-        Metodo legacy per l'analisi di mercato, che invia automaticamente
-        le righe di prompt selezionate e restituisce la risposta cumulativa.
-
-        Delega alla funzione analyze_market_legacy in framework/analysis/market_analysis.py
-        """
-
-        # 1. Controllo riavvio richiesto
-        if hasattr(self, 'restart_analysis_needed') and self.restart_analysis_needed:
-            self.add_log("🔄 Riavvio richiesto dopo reset del contesto - esecuzione in corso...")
-            self.restart_analysis_needed = False
-            return self.restart_current_analysis()
-
-        import re
-        selected_phases = []
-
-        # 2. DEBUG: Check esistenza checkbox
-        self.add_log(f"DEBUG: legacy_phase_checkboxes esiste: {hasattr(self, 'legacy_phase_checkboxes')}")
-
-        if hasattr(self, 'legacy_phase_checkboxes') and self.legacy_phase_checkboxes is not None:
-            try:
-                selected_values = self.legacy_phase_checkboxes.value
-                self.add_log(f"DEBUG: Valori selezionati da legacy_phase_checkboxes: {selected_values}")
-
-                for selected_value in selected_values:
-                    match = re.match(r'([A-Z]+-\d+):', selected_value)
-                    if match:
-                        phase_id = match.group(1)
-                        number_match = re.search(r'-(\d+)', phase_id)
-                        if number_match:
-                            phase_number = int(number_match.group(1))
-                            selected_phases.append(phase_number)
-                            self.add_log(f"📊 Fase Legacy selezionata: {phase_id} (numero {phase_number})")
-                    else:
-                        self.add_log(f"⚠️ Nessuna corrispondenza regex trovata per: {selected_value}")
-            except Exception as e:
-                self.add_log(f"⚠️ Errore nella lettura del CheckboxGroup: {str(e)}")
-
-        # 3. Fallback se non è stata trovata nessuna fase
-        if not selected_phases:
-            selected_phases = [1]
-            self.add_log("⚠️ Nessuna fase trovata, uso fase 1 come default")
-
-        self.add_log(f"🔍 Fasi Legacy selezionate finali: {', '.join(map(str, selected_phases))}")
-
-        # 4. Regex per dividere le sezioni nel prompt
-        filtered_sections = []
-        pattern = r'(\d+)[\.|\)](.*?)(?=\n\s*\d+[\.|\)]|$)'
-
-        try:
-            matches = list(re.finditer(pattern, analysis_prompt, re.DOTALL))
-            self.add_log(f"📋 Trovate {len(matches)} sezioni totali nel prompt")
-        except Exception as e:
-            self.add_log(f"⚠️ Errore nell'analisi del prompt con regex: {str(e)}")
-            matches = []
-
-        # 5. Filtraggio delle sezioni in base alle fasi
-        for match in matches:
-            try:
-                section_number = int(match.group(1))
-                if section_number in selected_phases:
-                    filtered_sections.append(match.group(0))
-                    self.add_log(f"✅ Inclusa sezione {section_number}")
-                else:
-                    self.add_log(f"❌ Saltata sezione {section_number} (non selezionata)")
-            except Exception as e:
-                self.add_log(f"⚠️ Errore nel processare una sezione del prompt: {str(e)}")
-
-        # 6. Se nessuna sezione viene inclusa, prova comunque la sezione 1
-        if not filtered_sections and matches:
-            self.add_log("⚠️ Nessuna sezione filtrata: tentativo di usare la sezione 1 come fallback")
-            for match in matches:
-                try:
-                    if int(match.group(1)) == 1:
-                        filtered_sections.append(match.group(0))
-                        self.add_log("✅ Fallback: inclusa sezione 1")
-                        break
-                except Exception as e:
-                    self.add_log(f"⚠️ Errore nel fallback su sezione 1: {str(e)}")
-
-        # 7. Se ancora nessuna sezione trovata, interrompi
-        if not filtered_sections:
-            return self.add_log("❌ Nessuna fase selezionata! Seleziona almeno una fase dell'analisi.")
-
-        # 8. Costruzione del prompt filtrato
-        filtered_prompt = "\n\n".join(filtered_sections)
-        self.add_log(f"✅ Prompt filtrato: {len(filtered_prompt)} caratteri, {len(filtered_sections)} sezioni")
-
-        # 9. Chiamata finale al modulo delegato
-        from framework.analysis.market_analysis import analyze_market_legacy
-
-        return analyze_market_legacy(
-            book_type=book_type,
-            keyword=keyword,
-            language=language,
-            market=market,
-            analysis_prompt=filtered_prompt,
-            driver=self.driver,
-            chat_manager=self.chat_manager,
-            markets=self.markets
-        )
-
+    
 
 
 
@@ -2424,33 +2317,38 @@ class AIBookBuilder:
     
         return driver_get_last_response(self.driver, self.add_log)
 
-    def handle_context_limit(self):
+    def handle_context_limit(self, driver=None):
         """
         Gestisce il limite di contesto in Genspark.
+    
+        Args:
+            driver: WebDriver di Selenium (opzionale, usa self.driver se non specificato)
         """
         from ai_interfaces.browser_manager import reset_context_manual as manager_reset_context_manual
-    
+
         # Definisci la funzione che riavvierà l'analisi se necessario
         def restart_analysis_if_needed():
             self.add_log("🔄 Riavvio dell'analisi dalla domanda #1 dopo nuova sessione")
-        
+    
             # Verifica che abbiamo i parametri dell'analisi corrente
             if not hasattr(self, 'current_analysis_params'):
                 self.add_log("⚠️ Impossibile riavviare l'analisi: parametri non disponibili")
                 return False
-        
+    
             # Impostiamo il flag per il riavvio
             self.restart_analysis_needed = True
             return True
+
+        # Usa il driver fornito o quello dell'istanza
+        browser_driver = driver if driver is not None else self.driver
     
         success, result = manager_reset_context_manual(
-            driver=self.driver,
+            driver=browser_driver,
             log_callback=self.add_log,
             restart_analysis_callback=restart_analysis_if_needed
         )
-    
-        return success
 
+        return success
     def reset_context_manual(self, driver):
         """
         Reset completo del contesto: chiude la chat corrente, apre una nuova sessione,
@@ -2657,1535 +2555,13 @@ class AIBookBuilder:
             return False
 
 
-    def continue_analysis(self):
-        """Continua l'analisi dopo una pausa manuale"""
-        try:
-            # Controlla se stai usando CRISP
-            if hasattr(self, 'use_crisp') and self.use_crisp and hasattr(self, 'current_analysis') and self.current_analysis.get('crisp_project_id'):
-                return self._continue_analysis_crisp()
-            else:
-                return self._continue_analysis_legacy()
-        except Exception as e:
-            print(f"DEBUG ERROR: {str(e)}")
-            return self.add_log(f"Errore durante il completamento dell'analisi: {str(e)}")
-
-
-    def _continue_analysis_crisp(self):
-        """Continua l'analisi CRISP dopo una pausa manuale"""
-        try:
-            self.add_log("Continuazione analisi PubliScript...")
-            # Ottieni la risposta attuale dalla chat
-            response = self.get_last_response()
-        
-            if not response:
-                return self.add_log("Non è stato possibile recuperare la risposta dalla chat")
-        
-            # Recupera l'ID del progetto CRISP
-            project_id = self.current_analysis.get('crisp_project_id')
-            if not project_id:
-                return self.add_log("Errore: Nessun progetto CRISP trovato")
-        
-            # Determina quale fase CRISP è stata interrotta
-            execution_history = self.current_analysis.get('execution_history', [])
-            if not execution_history:
-                return self.add_log("Errore: Nessuna storia di esecuzione trovata")
-        
-            last_step = execution_history[-1]['step_id']
-            self.add_log(f"Ripresa dall'ultimo step completato: {last_step}")
-        
-            # Salva la risposta nel database
-            # Aggiorna i dati del progetto con la nuova risposta
-            self.chat_manager.save_response(
-                response,
-                f"Continuazione CRISP - {last_step}",
-                {"project_id": project_id, "manual_continuation": True}
-            )
-        
-            # Continua l'esecuzione del flusso CRISP
-            # Definisci una funzione executor per continuare
-            def continue_executor(prompt_text):
-                self.add_log(f"Continuazione prompt CRISP ({len(prompt_text)} caratteri)...")
-                lines = [line.strip() for line in prompt_text.split('\n') if line.strip()]
-                cumulative_response = []
-            
-                for i, line in enumerate(lines):
-                    self.add_log(f"Linea {i+1}/{len(lines)}: {line[:50]}...")
-                    response = self.send_to_genspark(line)
-                    cumulative_response.append(response)
-                    time.sleep(2)
-            
-                combined_response = "\n\n".join(cumulative_response)
-                self.chat_manager.save_response(
-                    combined_response,
-                    "Continuazione CRISP",
-                    {"project_id": project_id}
-                )
-                return combined_response
-        
-            # Aggiorna l'interfaccia per indicare che la continuazione è in corso
-            self.add_log("🔄 Ripresa dell'analisi CRISP...")
-        
-            # In un'implementazione reale, qui chiameresti il metodo del framework CRISP 
-            # per continuare dal punto di interruzione. Però, poiché il framework non ha 
-            # un metodo specifico per questo, dovresti implementare la logica tu stesso.
-            self.add_log("✅ Analisi CRISP continuata con successo")
-            return self.chat_manager.get_log_history_string()
-        
-        except Exception as e:
-            error_msg = f"Errore durante la continuazione dell'analisi CRISP: {str(e)}"
-            self.add_log(error_msg)
-            logging.error(error_msg)
-            return self.chat_manager.get_log_history_string()
-
-
-    def complete_analysis(self):
-        """
-        Completa l'analisi e prepara i dettagli del libro.
-        Estrae le informazioni critiche dal file di contesto o dal database CRISP
-        e le prepara per la generazione del libro.
-        """
-        import re  # Importazione esplicita di re per evitare l'errore "variable referenced before assignment"
-        import os
-        import traceback
-        import gradio as gr  # Aggiungi questa riga per importare gr all'interno del metodo
-        from datetime import datetime
-
-        # Ripara il database prima di continuare
-        self.diagnose_and_fix_database()
-
-        self.add_log("▶️ Avvio funzione complete_analysis")
- 
-        # ==================== FASE 1: DIAGNOSTICA INIZIALE ====================
-        # Verifica se il file di contesto esiste e stampa informazioni diagnostiche
-        print(f"DEBUG-INIT: Avvio complete_analysis() con dettagli estesi")
-        print(f"DEBUG-INIT: Tentativo di lettura del file context.txt - Esiste: {os.path.exists('context.txt')}")
-        print(f"DEBUG-INIT: Directory corrente: {os.getcwd()}")
-        print(f"DEBUG-INIT: Memoria disponibile per gli oggetti Python")
-
-        # Verifica se ci sono dati nel current_analysis
-        if hasattr(self, 'current_analysis'):
-            print(f"DEBUG-INIT: current_analysis esiste: {type(self.current_analysis)}")
-            if self.current_analysis:
-                print(f"DEBUG-INIT: current_analysis contiene {len(self.current_analysis)} elementi")
-                # Mostra le chiavi principali
-                for key in list(self.current_analysis.keys())[:5]:  # Limita a 5 chiavi per leggibilità
-                    print(f"DEBUG-INIT: - Chiave: {key}, Tipo: {type(self.current_analysis[key])}")
-            else:
-                print("DEBUG-INIT: current_analysis è un dizionario vuoto o None")
-        else:
-            print("DEBUG-INIT: current_analysis non esiste come attributo")
-
-        # Backup del file di contesto prima di iniziare l'elaborazione
-        if os.path.exists("context.txt"):
-            try:
-                file_size = os.path.getsize("context.txt")
-                print(f"DEBUG-CONTEXT: File context.txt trovato - Dimensione: {file_size} bytes")
-
-                # Leggi l'intestazione del file per debug
-                try:
-                    with open("context.txt", "r", encoding="utf-8") as f:
-                        # Leggi le prime 10 righe o meno se il file è più corto
-                        first_lines = []
-                        for _ in range(10):
-                            try:
-                                line = next(f)
-                                first_lines.append(line)
-                            except StopIteration:
-                                break
-        
-                        print(f"DEBUG-CONTEXT: Prime {len(first_lines)} righe del file:")
-                        for i, line in enumerate(first_lines):
-                            print(f"DEBUG-CONTEXT: Riga {i+1}: {line.strip()}")
-                except Exception as e:
-                    print(f"DEBUG-CONTEXT: Errore nella lettura dell'intestazione del file: {str(e)}")
-                    print(f"DEBUG-CONTEXT: Traceback errore intestazione:\n{traceback.format_exc()}")
-
-                # Crea backup con timestamp
-                import shutil
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                backup_file = f"context_backup_{timestamp}.txt"
-                shutil.copy2("context.txt", backup_file)
-                backup_size = os.path.getsize(backup_file)
-                print(f"DEBUG-CONTEXT: Backup creato: {backup_file} ({backup_size} bytes)")
-
-                # Leggi e stampa un'anteprima del contenuto
-                try:
-                    with open("context.txt", "r", encoding="utf-8") as f:
-                        # Leggi i primi 300 caratteri per anteprima
-                        context_preview = f.read(300)
-                        print(f"DEBUG-CONTEXT: Anteprima del contenuto (primi 300 caratteri):")
-                        # Sostituisci i caratteri di nuova riga con \n visibili
-                        context_preview_formatted = context_preview.replace('\n', '\\n')
-                        print(f"DEBUG-CONTEXT: {context_preview_formatted}")
-                except Exception as e:
-                    print(f"DEBUG-CONTEXT: Errore nella lettura dell'anteprima: {str(e)}")
-
-            except Exception as backup_error:
-                print(f"DEBUG-CONTEXT: Errore nel backup del file di contesto: {str(backup_error)}")
-                print(f"DEBUG-CONTEXT: Traceback errore backup:\n{traceback.format_exc()}")
-        else:
-            print("DEBUG-CONTEXT: ATTENZIONE - File context.txt non trovato!")
-            # Elenca tutti i file nella directory corrente per debug
-            print("DEBUG-CONTEXT: Elenco dei file nella directory corrente:")
-            try:
-                files = os.listdir()
-                for file in files:
-                    if os.path.isfile(file):
-                        print(f"DEBUG-CONTEXT: - {file} ({os.path.getsize(file)} bytes)")
-            except Exception as e:
-                print(f"DEBUG-CONTEXT: Errore nell'elenco dei file: {str(e)}")
-
-
-        # ================ FASE 2: INIZIO DELL'ELABORAZIONE PRINCIPALE ================
-        try:
-            # Aggiungi al log
-            self.add_log("▶️ Avvio funzione complete_analysis")
-
-            # Inizializza current_analysis se non esiste
-            if not hasattr(self, 'current_analysis') or self.current_analysis is None:
-                self.current_analysis = {}
-                self.add_log("ℹ️ Inizializzato current_analysis (non esisteva)")
-                print("DEBUG-INIT: current_analysis inizializzato (era None)")
-            else:
-                print(f"DEBUG-INIT: current_analysis già esistente con {len(self.current_analysis)} chiavi")
-                # Debug delle chiavi esistenti
-                for key in self.current_analysis:
-                    value_preview = str(self.current_analysis[key])
-                    if len(value_preview) > 100:
-                        value_preview = value_preview[:100] + "..."
-                    print(f"DEBUG-INIT: - chiave: {key}, valore: {value_preview}")
-
-            # ================ FASE 3: INIZIALIZZAZIONE VALORI DI RITORNO ================
-            # Prepara i valori che verranno restituiti alla fine
-            analysis_status_text = "**Stato analisi**: Completata"
-            tabs_value = gr.Tabs(selected=2)  # Seleziona il tab "Generazione Libro"
-            book_title_value = ""             # Titolo estratto dall'analisi
-            book_index_value = ""             # Indice estratto dall'analisi
-            voice_style_value = ""            # Stile di voce estratto dall'analisi
-            book_type_value = ""              # Tipo di libro estratto dall'analisi
-
-            print("DEBUG-VALUES: Valori di ritorno inizializzati con stringhe vuote")
-
-            # ================ FASE 4: DETERMINA LA MODALITÀ (CRISP o LEGACY) ================
-            # Verifica se si sta utilizzando il framework CRISP
-            use_crisp = hasattr(self, 'use_crisp') and self.use_crisp
-            self.add_log(f"ℹ️ Modalità CRISP: {use_crisp}")
-            print(f"DEBUG-MODE: Utilizzo framework CRISP: {use_crisp}")
-
-            # ================ FASE 5A: ELABORAZIONE MODALITÀ CRISP ================
-            if use_crisp and hasattr(self, 'current_analysis') and self.current_analysis.get('crisp_project_id'):
-                print("DEBUG-CRISP: Avvio elaborazione in modalità CRISP")
-                self.add_log("🔍 Tentativo di estrazione dati da progetto CRISP")
-
-                # Recupera l'ID del progetto CRISP
-                project_id = self.current_analysis.get('crisp_project_id')
-                if not project_id:
-                    self.add_log("⚠️ ID Progetto CRISP non trovato nella current_analysis")
-                    print("DEBUG-CRISP: ID Progetto CRISP non trovato - impossibile recuperare dati")
-                else:
-                    self.add_log(f"✅ ID Progetto CRISP trovato: {project_id}")
-                    print(f"DEBUG-CRISP: ID Progetto CRISP trovato: {project_id}")
     
-                    # Recupera i dati completi del progetto dal framework CRISP
-                    project_data = None
-                    try:
-                        # Verifica se è possibile accedere ai dati del progetto
-                        if hasattr(self, 'crisp') and hasattr(self.crisp, 'get_project_data'):
-                            print(f"DEBUG-CRISP: Tentativo recupero dati con crisp.get_project_data({project_id})")
-            
-                            # Chiamata effettiva per recuperare i dati
-                            project_data = self.crisp.get_project_data(project_id)
-            
-                            if project_data:
-                                print(f"DEBUG-CRISP: Dati progetto recuperati: {len(project_data)} variabili")
-                
-                                # Stampa le prime 10 variabili per debug
-                                counter = 0
-                                for key, value in project_data.items():
-                                    if counter < 10:
-                                        value_str = str(value)
-                                        if len(value_str) > 100:
-                                            value_str = value_str[:100] + "..."
-                                        print(f"DEBUG-CRISP: Variabile {counter+1}: {key} = {value_str}")
-                                        counter += 1
-                                    else:
-                                        break
-                
-                                self.add_log(f"✅ Dati progetto recuperati: {len(project_data)} variabili")
-                            else:
-                                print("DEBUG-CRISP: ERRORE - get_project_data ha restituito None")
-                                self.add_log("⚠️ get_project_data ha restituito None")
-                        else:
-                            print("DEBUG-CRISP: ERRORE - crisp o get_project_data non disponibili")
-            
-                            # Diagnostica dettagliata
-                            if hasattr(self, 'crisp'):
-                                print(f"DEBUG-CRISP: self.crisp esiste: {type(self.crisp)}")
-                                print(f"DEBUG-CRISP: hasattr(self.crisp, 'get_project_data'): {hasattr(self.crisp, 'get_project_data')}")
-                
-                                # Elenca tutti i metodi disponibili per debug
-                                methods = [method for method in dir(self.crisp) if not method.startswith('_')]
-                                print(f"DEBUG-CRISP: Metodi disponibili in self.crisp: {methods}")
-                            else:
-                                print("DEBUG-CRISP: self.crisp non esiste come attributo")
-    
-                    except Exception as e:
-                        self.add_log(f"⚠️ Errore nel recupero dati progetto CRISP: {str(e)}")
-                        print(f"DEBUG-CRISP: Eccezione in get_project_data: {str(e)}")
-                        print(f"DEBUG-CRISP: Traceback dettagliato:\n{traceback.format_exc()}")
-    
-                    # ================ FASE 5A-1: ESTRAZIONE DATI DAL PROGETTO CRISP ================
-                    # Se abbiamo recuperato i dati del progetto, estrai le informazioni necessarie
-                    if project_data:
-                        # Salva i dati del progetto per uso futuro
-                        self.current_analysis['project_data'] = project_data
-                        print("DEBUG-CRISP: project_data salvato in current_analysis per uso futuro")
-        
-                        # ---------- Estrazione Titolo ----------
-                        if 'TITOLO_LIBRO' in project_data:
-                            book_title_value = project_data.get('TITOLO_LIBRO', '')
-                            self.add_log(f"✅ Titolo estratto: {book_title_value}")
-                            print(f"DEBUG-CRISP: Titolo estratto: '{book_title_value}'")
-                        else:
-                            print("DEBUG-CRISP: TITOLO_LIBRO non trovato nei dati del progetto")
-                            # Cerca alternative per il titolo
-                            for alt_key in ['TITLE', 'BOOK_TITLE', 'TITOLO']:
-                                if alt_key in project_data:
-                                    book_title_value = project_data.get(alt_key, '')
-                                    print(f"DEBUG-CRISP: Titolo trovato in campo alternativo {alt_key}: {book_title_value}")
-                                    break
-        
-                        # ---------- Estrazione Stile di Voce ----------
-                        if 'VOICE_STYLE' in project_data:
-                            voice_style_value = project_data.get('VOICE_STYLE', '')
-                            self.add_log(f"✅ Stile voce estratto: {voice_style_value}")
-                            print(f"DEBUG-CRISP: Stile voce estratto: '{voice_style_value}'")
-                        else:
-                            print("DEBUG-CRISP: VOICE_STYLE non trovato nei dati del progetto")
-                            # Cerca alternative per lo stile di voce
-                            for alt_key in ['TONE', 'STYLE', 'WRITING_STYLE']:
-                                if alt_key in project_data:
-                                    voice_style_value = project_data.get(alt_key, '')
-                                    print(f"DEBUG-CRISP: Stile voce trovato in campo alternativo {alt_key}: {voice_style_value}")
-                                    break
-        
-                        # ---------- Estrazione Tipo di Libro ----------
-                        if 'LIBRO_TIPO' in project_data:
-                            book_type_value = project_data.get('LIBRO_TIPO', '')
-                            self.add_log(f"✅ Tipo di libro estratto: {book_type_value}")
-                            print(f"DEBUG-CRISP: Tipo di libro estratto: '{book_type_value}'")
-                        else:
-                            print("DEBUG-CRISP: LIBRO_TIPO non trovato nei dati del progetto")
-                            # Cerca alternative per il tipo di libro
-                            for alt_key in ['BOOK_TYPE', 'TIPO', 'GENRE']:
-                                if alt_key in project_data:
-                                    book_type_value = project_data.get(alt_key, '')
-                                    print(f"DEBUG-CRISP: Tipo libro trovato in campo alternativo {alt_key}: {book_type_value}")
-                                    break
-        
-                        # ---------- Costruzione Indice del Libro ----------
-                        print("DEBUG-CRISP: Tentativo costruzione indice del libro")
-        
-                        # Cerca CONTENT_PILLARS per la costruzione dell'indice
-                        if 'CONTENT_PILLARS' in project_data:
-                            self.add_log("🔍 Tentativo di costruzione indice da CONTENT_PILLARS")
-                            print("DEBUG-CRISP: Tentativo di costruzione indice da CONTENT_PILLARS")
-            
-                            pillars_text = project_data.get('CONTENT_PILLARS', '')
-                            print(f"DEBUG-CRISP: CONTENT_PILLARS trovato, lunghezza: {len(pillars_text)}")
-                            print(f"DEBUG-CRISP: Anteprima CONTENT_PILLARS: {pillars_text[:200]}...")
-            
-                            # Estrai i pilastri di contenuto con diversi pattern di espressioni regolari
-                            pillars = []
-                            if isinstance(pillars_text, str):
-                                # Prova diversi pattern per estrarre pilastri
-                                print("DEBUG-CRISP: Tentativo di estrazione pilastri con pattern regex")
-                
-                                pattern_results = {}
-                
-                                for pattern in [
-                                    r'(\d+\.\s*[^\n]+)',             # Pattern per "1. Titolo"
-                                    r'(\d+\)\s*[^\n]+)',             # Pattern per "1) Titolo"
-                                    r'(CAPITOLO \d+[^:\n]*:[^\n]+)', # Pattern per "CAPITOLO 1: Titolo"
-                                    r'(Capitolo \d+[^:\n]*:[^\n]+)'  # Pattern per "Capitolo 1: Titolo"
-                                ]:
-                                    # Prova ogni pattern e registra i risultati
-                                    pillar_matches = re.findall(pattern, pillars_text)
-                                    pattern_results[pattern] = pillar_matches
-                    
-                                    if pillar_matches:
-                                        print(f"DEBUG-CRISP: Pattern '{pattern}' ha trovato {len(pillar_matches)} corrispondenze")
-                                        # Mostra le prime corrispondenze
-                                        for i, match in enumerate(pillar_matches[:3]):
-                                            print(f"DEBUG-CRISP: --- Match {i+1}: {match}")
-                        
-                                        if len(pillar_matches) >= 3:  # Minimo 3 capitoli per un buon indice
-                                            pillars = [p.strip() for p in pillar_matches]
-                                            break
-                                    else:
-                                        print(f"DEBUG-CRISP: Pattern '{pattern}' non ha trovato corrispondenze")
-                
-                                # Se nessun pattern ha funzionato, prova con approcci alternativi
-                                if not pillars:
-                                    print("DEBUG-CRISP: Nessun pattern regex ha trovato abbastanza pilastri, provo approccio alternativo")
-                    
-                                    # Approccio alternativo: dividi per righe e cerca linee che sembrano titoli di capitolo
-                                    lines = pillars_text.split('\n')
-                                    print(f"DEBUG-CRISP: Text diviso in {len(lines)} righe per analisi")
-                    
-                                    for line in lines:
-                                        line = line.strip()
-                                        # Verifica se la riga sembra un titolo di capitolo
-                                        if line and (
-                                            line.lower().startswith('capitolo') or 
-                                            line.lower().startswith('chapter') or
-                                            re.match(r'^\d+[\.\)]', line)
-                                        ):
-                                            pillars.append(line)
-                                            print(f"DEBUG-CRISP: Trovato potenziale pilastro: {line}")
-                    
-                                    if pillars:
-                                        print(f"DEBUG-CRISP: Approccio alternativo ha trovato {len(pillars)} potenziali pilastri")
-                                    else:
-                                        print("DEBUG-CRISP: Anche l'approccio alternativo non ha trovato pilastri")
-                        
-                                        # Ultimo tentativo: cerca qualsiasi riga che sembra un titolo
-                                        print("DEBUG-CRISP: Tentativo di ultima risorsa: qualsiasi riga che sembra un titolo")
-                                        for line in lines:
-                                            line = line.strip()
-                                            # Riga abbastanza lunga ma non troppo e con maiuscole all'inizio
-                                            if 10 <= len(line) <= 100 and line[0].isupper() and ":" not in line and line.endswith((".","?")):
-                                                pillars.append(line)
-                                                print(f"DEBUG-CRISP: Titolo potenziale trovato: {line}")
-                                                if len(pillars) >= 5:  # Limita a 5 pilastri per questo approccio
-                                                    break
-                            else:
-                                print(f"DEBUG-CRISP: CONTENT_PILLARS non è una stringa ma un {type(pillars_text)}")
-                
-                                # Se CONTENT_PILLARS è una lista (possibile con alcune implementazioni)
-                                if isinstance(pillars_text, list):
-                                    print(f"DEBUG-CRISP: CONTENT_PILLARS è una lista con {len(pillars_text)} elementi")
-                                    pillars = pillars_text
-            
-                            # Costruisci l'indice a partire dai pilastri trovati
-                            if pillars:
-                                print(f"DEBUG-CRISP: Costruzione indice con {len(pillars)} pilastri trovati")
-                
-                                # Pulisci e formatta l'indice
-                                index_text = "INTRODUZIONE\n\n"
-                
-                                for i, pillar in enumerate(pillars, 1):
-                                    # Rimuovi numeri e simboli di punteggiatura iniziali
-                                    try:
-                                        clean_pillar = re.sub(r'^\d+[\.\)\s]+|^CAPITOLO\s+\d+\s*[:\.\-\s]*|^Capitolo\s+\d+\s*[:\.\-\s]*', '', pillar).strip()
-                                        print(f"DEBUG-CRISP: Pillar {i} originale: '{pillar}'")
-                                        print(f"DEBUG-CRISP: Pillar {i} pulito: '{clean_pillar}'")
-                        
-                                        if clean_pillar:  # Aggiungi solo se c'è testo dopo la pulizia
-                                            index_text += f"CAPITOLO {i}: {clean_pillar}\n\n"
-                                        else:
-                                            print(f"DEBUG-CRISP: Pillar {i} ha prodotto un testo vuoto dopo la pulizia")
-                                            # Usa il testo originale come fallback se la pulizia ha rimosso tutto
-                                            index_text += f"CAPITOLO {i}: {pillar}\n\n"
-                                    except Exception as e:
-                                        print(f"DEBUG-CRISP: Errore nella pulizia del pillar {i}: {str(e)}")
-                                        # Usa il testo originale in caso di errore
-                                        index_text += f"CAPITOLO {i}: {pillar}\n\n"
-                
-                                index_text += "CONCLUSIONE"
-                                book_index_value = index_text
-                                self.add_log(f"✅ Indice costruito con {len(pillars)} capitoli")
-                                print(f"DEBUG-CRISP: Indice costruito con successo:\n{book_index_value}")
-                            else:
-                                # Indice di fallback se non sono stati trovati pilastri
-                                print("DEBUG-CRISP: Nessun pilastro trovato, uso indice di fallback")
-                                book_index_value = """INTRODUZIONE
-
-    CAPITOLO 1: Fondamenti
-
-    CAPITOLO 2: Metodologia
-
-    CAPITOLO 3: Applicazione
-
-    CAPITOLO 4: Casi Studio
-
-    CAPITOLO 5: Risultati
-
-    CONCLUSIONE"""
-                                self.add_log("⚠️ Usato indice di fallback (nessun pilastro trovato)")
-                                print("DEBUG-CRISP: Usato indice di fallback")
-                        else:
-                            print("DEBUG-CRISP: CONTENT_PILLARS non trovato nei dati del progetto")
-            
-                            # Cerca campi alternativi che potrebbero contenere informazioni per l'indice
-                            alternative_found = False
-                            for key in ['BOOK_STRUCTURE', 'INDICE_LIBRO', 'BOOK_JOURNEY', 'CHAPTER_STRUCTURE']:
-                                if key in project_data:
-                                    print(f"DEBUG-CRISP: Trovato {key} come alternativa a CONTENT_PILLARS")
-                                    self.add_log(f"🔍 Tentativo di costruzione indice da {key}")
-                                     # Implementazione simile a quella per CONTENT_PILLARS
-                                    alternative_text = project_data.get(key, '')
-                                    # (Ripeti logica simile a quella usata per CONTENT_PILLARS)
-                                    # Per brevità, questo codice è omesso ma sarebbe una duplicazione
-                                    # dell'approccio sopra adattato per il campo alternativo
-                    
-                                    alternative_found = True
-                                    break
-            
-                            if not alternative_found:
-                                print("DEBUG-CRISP: Nessuna alternativa a CONTENT_PILLARS trovata, uso indice di fallback")
-                    else:
-                        print("DEBUG-CRISP: project_data è None o vuoto, impossibile estrarre dati")
-
-            # ================ FASE 5B: ELABORAZIONE MODALITÀ LEGACY ================
-            else:
-                # Approccio legacy - senza framework CRISP
-                self.add_log("🔍 Utilizzo approccio legacy (non CRISP)")
-                print("DEBUG-LEGACY: Avvio elaborazione in modalità legacy (non CRISP)")
-
-                try:
-                    # Cerca dati nel file di contesto
-                    context_file = "context.txt"
-                    if os.path.exists(context_file):
-                        # Informazioni sul file
-                        file_size = os.path.getsize(context_file)
-                        print(f"DEBUG-LEGACY: File context.txt trovato, dimensione: {file_size} bytes")
-        
-                        # Leggi l'intero contenuto del file
-                        try:
-                            with open(context_file, "r", encoding="utf-8") as f:
-                                context_content = f.read()
-            
-                            self.add_log(f"✅ File contesto letto: {len(context_content)} caratteri")
-                            print(f"DEBUG-LEGACY: File contesto letto con successo: {len(context_content)} caratteri")
-            
-                            # Stampa le prime righe per debug
-                            content_preview = context_content[:500].replace('\n', ' ')
-                            print(f"DEBUG-LEGACY: Anteprima dei primi 500 caratteri: {content_preview}...")
-            
-                            # Analisi strutturale del contenuto per determinare il formato
-                            print("DEBUG-LEGACY: Analisi strutturale del contenuto")
-            
-                            # Cerca sezioni nel formato standard
-                            section_pattern = r'===\s+([^=]+?)\s+-\s+\d{8}_\d{6}\s+===\n'
-                            sections = re.findall(section_pattern, context_content)
-            
-                            if sections:
-                                print(f"DEBUG-LEGACY: Trovate {len(sections)} sezioni nel formato standard")
-                                for i, section in enumerate(sections[:5]):  # Mostra solo le prime 5
-                                    print(f"DEBUG-LEGACY: - Sezione {i+1}: {section}")
-                
-                                # Analisi dettagliata delle sezioni
-                                print("DEBUG-LEGACY: Analisi dettagliata delle sezioni trovate")
-                                section_contents = re.split(section_pattern, context_content)[1:]  # Salta il primo che è vuoto
-                
-                                # Assicurati che abbiamo lo stesso numero di titoli e contenuti
-                                if len(sections) == len(section_contents)/2:
-                                    print("DEBUG-LEGACY: Numero corretto di sezioni e contenuti")
-                                else:
-                                    print(f"DEBUG-LEGACY: ATTENZIONE - Discrepanza: {len(sections)} titoli vs {len(section_contents)/2} contenuti")
-                            else:
-                                print("DEBUG-LEGACY: Nessuna sezione trovata nel formato standard")
-                                # Cerca formati alternativi
-                                alt_pattern = r'---\s+([^-]+?)\s+---\n'
-                                alt_sections = re.findall(alt_pattern, context_content)
-                                if alt_sections:
-                                    print(f"DEBUG-LEGACY: Trovate {len(alt_sections)} sezioni in formato alternativo")
-                                else:
-                                    print("DEBUG-LEGACY: Nessuna sezione trovata in formato alternativo")
-            
-                            # ================ FASE 5B-1: ESTRAZIONE DATI LEGACY ================
-                            try:
-                                # ---------- Estrazione Titolo ----------
-                                print("DEBUG-LEGACY: Tentativo estrazione titolo")
-                
-                                # Lista di pattern da provare per trovare il titolo
-                                title_patterns = [
-                                    r'7\)[^:]*:[^T]*Titolo[^:]*:[^\n]*\n([^\n]+)',
-                                    r'7\.[^:]*:[^T]*Titolo[^:]*:[^\n]*\n([^\n]+)',
-                                    r'Titolo[^:]*:[^\n]*\n([^\n]+)',
-                                    r'(?:title|titolo)[^:]*:[^\n]*\n([^\n]+)',
-                                    r'THE[^"]*"([^"]+)"',  # Pattern per titoli tra virgolette
-                                    r'"([^"]+)".*?(?:il tuo nuovo libro|your new book)',  # Pattern per titoli suggeriti
-                                ]
-                
-                                # Prova ogni pattern fino a trovare una corrispondenza
-                                book_title_value = ""
-                                for pattern in title_patterns:
-                                    print(f"DEBUG-LEGACY: Provo pattern titolo: {pattern}")
-                                    title_match = re.search(pattern, context_content, re.IGNORECASE)
-                    
-                                    if title_match:
-                                        book_title_value = title_match.group(1).strip()
-                                        self.add_log(f"✅ Titolo estratto (legacy): {book_title_value}")
-                                        print(f"DEBUG-LEGACY: Titolo estratto con pattern '{pattern}': {book_title_value}")
-                                        break
-                
-                                if not book_title_value:
-                                    print("DEBUG-LEGACY: Nessun titolo trovato con i pattern standard")
-                    
-                                    # Cerca titoli in sezioni specifiche
-                                    print("DEBUG-LEGACY: Ricerca titolo in sezioni specifiche")
-                    
-                                    # Cerca sezioni che potrebbero contenere titoli
-                                    title_sections = [s for s in sections if 'titolo' in s.lower() or 'title' in s.lower()]
-                                    if title_sections:
-                                        print(f"DEBUG-LEGACY: Trovate {len(title_sections)} sezioni potenzialmente contenenti titoli")
-                        
-                                        # Per ogni sezione potenziale, cerca titoli
-                                        for title_section in title_sections:
-                                            section_index = sections.index(title_section)
-                                            section_content = section_contents[section_index * 2]  # Moltiplica per 2 a causa della divisione
-                            
-                                            # Cerca titoli nella sezione
-                                            title_lines = [line for line in section_content.split('\n') if line.strip()]
-                                            if title_lines:
-                                                print(f"DEBUG-LEGACY: Sezione '{title_section}' contiene {len(title_lines)} linee non vuote")
-
-    # Prendi la prima linea che sembra un titolo
-                                            for line in title_lines:
-                                                # Se la linea sembra un titolo (non troppo lungo, non contiene caratteri speciali)
-                                                if 10 <= len(line) <= 100 and not any(char in line for char in ['{', '}', '(', ')', '[', ']']):
-                                                    book_title_value = line.strip().strip('"\'')
-                                                    print(f"DEBUG-LEGACY: Titolo estratto da sezione: {book_title_value}")
-                                                    break
-                            
-                                            if book_title_value:
-                                                break
-                
-                                # ---------- Estrazione Indice ----------
-                                print("DEBUG-LEGACY: Tentativo estrazione indice")
-                
-                                # Lista di pattern da provare per trovare l'indice
-                                index_patterns = [
-                                    r'8\)[^:]*:[^I]*Indice[^:]*:[^\n]*\n(.*?)(?=\n\n|$)',
-                                    r'8\.[^:]*:[^I]*Indice[^:]*:[^\n]*\n(.*?)(?=\n\n|$)',
-                                    r'Indice[^:]*:[^\n]*\n(.*?)(?=\n\n|$)',
-                                    r'(?:indice|index)[^:]*:[^\n]*\n(.*?)(?=\n\n|$)',
-                                    r'INDICE DEL LIBRO[^\n]*\n(.*?)(?=\n\n===|$)',  # Pattern specifico
-                                    r'Indice del Libro[^\n]*\n(.*?)(?=\n\n|$)'      # Altra variante
-                                ]
-                
-                                # Prova ogni pattern fino a trovare una corrispondenza
-                                book_index_value = ""
-                                for pattern in index_patterns:
-                                    print(f"DEBUG-LEGACY: Provo pattern indice: {pattern}")
-                                    index_match = re.search(pattern, context_content, re.DOTALL | re.IGNORECASE)
-                    
-                                    if index_match:
-                                        book_index_value = index_match.group(1).strip()
-                                        self.add_log(f"✅ Indice estratto (legacy): {len(book_index_value)} caratteri")
-                                        print(f"DEBUG-LEGACY: Indice estratto con pattern '{pattern}', lunghezza: {len(book_index_value)}")
-                                        print(f"DEBUG-LEGACY: Preview indice: {book_index_value[:200]}...")
-                                        break
-                
-                                if not book_index_value:
-                                    print("DEBUG-LEGACY: Nessun indice trovato con i pattern standard")
-                                    print("DEBUG-LEGACY: Tentativo ricerca capitoli diretta")
-                    
-                                    # Cerca tutti i pattern che sembrano capitoli
-                                    chapter_patterns = [
-                                        r'(CAPITOLO\s+\d+[^:\n]*:[^\n]+)',
-                                        r'(CHAPTER\s+\d+[^:\n]*:[^\n]+)',
-                                        r'(Capitolo\s+\d+[^:\n]*:[^\n]+)'
-                                    ]
-                    
-                                    all_chapters = []
-                                    for pattern in chapter_patterns:
-                                        chapters = re.findall(pattern, context_content, re.IGNORECASE)
-                                        if chapters:
-                                            print(f"DEBUG-LEGACY: Pattern '{pattern}' ha trovato {len(chapters)} capitoli")
-                                            all_chapters.extend(chapters)
-                    
-                                    if all_chapters:
-                                        print(f"DEBUG-LEGACY: Trovati {len(all_chapters)} capitoli potenziali nel testo")
-                        
-                                        # Cerca il blocco di testo che contiene più capitoli consecutivi
-                                        chapter_sections = []
-                                        for match in re.finditer(r'((?:CAPITOLO\s+\d+[^\n]*\n){2,})', context_content, re.IGNORECASE):
-                                            section_text = match.group(1)
-                                            chapter_count = section_text.lower().count('capitolo')
-                                            chapter_sections.append((match.start(), match.end(), section_text, chapter_count))
-                        
-                                        if chapter_sections:
-                                            # Usa la sezione con più capitoli
-                                            best_section = max(chapter_sections, key=lambda x: x[3])
-                                            print(f"DEBUG-LEGACY: Trovato blocco indice con {best_section[3]} capitoli")
-                            
-                                            # Aggiungi l'introduzione e conclusione se non presenti
-                                            book_index_value = "INTRODUZIONE\n\n" + best_section[2] + "\nCONCLUSIONE"
-                                            print(f"DEBUG-LEGACY: Indice costruito da blocco trovato: {len(book_index_value)} caratteri")
-                                        else:
-                                            # Se non ci sono blocchi, combina tutti i capitoli trovati
-                                            book_index_value = "INTRODUZIONE\n\n" + "\n".join(all_chapters) + "\n\nCONCLUSIONE"
-                                            print(f"DEBUG-LEGACY: Indice costruito da capitoli individuali: {len(book_index_value)} caratteri")
-                
-                                # ---------- Estrazione Stile di Voce ----------
-                                print("DEBUG-LEGACY: Tentativo estrazione stile di voce")
-                
-                                # Lista di pattern da provare per trovare lo stile di voce
-                                voice_patterns = [
-                                    r'Tono di voce[^:]*:[^\n]*\n([^\n]+)',
-                                    r'Voce[^:]*:[^\n]*\n([^\n]+)',
-                                    r'Stile[^:]*:[^\n]*\n([^\n]+)',
-                                    r'VOICE_STYLE[^:]*:[^\n]*\n([^\n]+)',
-                                    r'(?:conversazionale|formale|informativo|tecnico)[^\n]+'
-                                ]
-                
-                                # Prova ogni pattern fino a trovare una corrispondenza
-                                voice_style_value = ""
-                                for pattern in voice_patterns:
-                                    print(f"DEBUG-LEGACY: Provo pattern stile voce: {pattern}")
-                                    voice_match = re.search(pattern, context_content, re.IGNORECASE)
-                    
-                                    if voice_match:
-                                        # Gestione speciale per l'ultimo pattern che non ha gruppo
-                                        if 'conversazionale' in pattern:
-                                            voice_style_value = voice_match.group(0).strip()
-                                        else:
-                                            voice_style_value = voice_match.group(1).strip()
-                        
-                                        self.add_log(f"✅ Stile voce estratto (legacy): {voice_style_value}")
-                                        print(f"DEBUG-LEGACY: Stile voce estratto con pattern '{pattern}': {voice_style_value}")
-                                        break
-                
-                                if not voice_style_value:
-                                    print("DEBUG-LEGACY: Nessuno stile di voce trovato con i pattern standard")
-                    
-                                    # Cerca nelle sezioni potenzialmente legate allo stile
-                                    style_sections = [s for s in sections if any(term in s.lower() for term in 
-                                                     ['voice', 'voce', 'stile', 'tone', 'tono'])]
-                    
-                                    if style_sections:
-                                        print(f"DEBUG-LEGACY: Trovate {len(style_sections)} sezioni potenzialmente contenenti stile")
-                        
-                                        for style_section in style_sections:
-                                            section_index = sections.index(style_section)
-                                            section_content = section_contents[section_index * 2]
-                            
-                                            # Cerca stile nelle prime 5 righe della sezione
-                                            style_lines = [line for line in section_content.split('\n')[:5] if line.strip()]
-                                            if style_lines:
-                                                voice_style_value = style_lines[0].strip()
-                                                print(f"DEBUG-LEGACY: Stile voce estratto da sezione: {voice_style_value}")
-                                                break
-                
-                                # ---------- Estrazione Tipo di Libro ----------
-                                print("DEBUG-LEGACY: Tentativo estrazione tipo di libro")
-                
-                                # Lista di pattern da provare per trovare il tipo di libro
-                                book_type_patterns = [
-                                    r'tipo di libro[^:]*:[^\n]*\n*\s*([^\n]+)',
-                                    r'genere[^:]*:[^\n]*\n*\s*([^\n]+)',
-                                    r'categoria[^:]*:[^\n]*\n*\s*([^\n]+)',
-                                    r'LIBRO_TIPO[^:]*:[^\n]*\n*\s*([^\n]+)'
-                                ]
-                
-                                # Prova ogni pattern fino a trovare una corrispondenza
-                                book_type_value = ""
-                                for pattern in book_type_patterns:
-                                    print(f"DEBUG-LEGACY: Provo pattern tipo libro: {pattern}")
-                                    book_type_match = re.search(pattern, context_content, re.IGNORECASE)
-                    
-                                    if book_type_match:
-                                        book_type_value = book_type_match.group(1).strip()
-                                        self.add_log(f"✅ Tipo di libro estratto (legacy): {book_type_value}")
-                                        print(f"DEBUG-LEGACY: Tipo di libro estratto con pattern '{pattern}': {book_type_value}")
-                                        break
-                
-                                if not book_type_value:
-                                    print("DEBUG-LEGACY: Nessun tipo di libro trovato con i pattern standard")
-                    
-                                    # Cerca valori comuni di tipo libro nel testo
-                                    common_types = ["Manuale", "Non-Fiction", "Ricettario", "Self-Help", "How-To", 
-                                                   "Craft", "Hobby", "Survival", "Test Study"]
-                    
-                                    for book_type in common_types:
-                                        if book_type.lower() in context_content.lower():
-                                            book_type_value = book_type
-                                            print(f"DEBUG-LEGACY: Tipo libro trovato nel testo: {book_type_value}")
-                                            break
-            
-                            except Exception as extraction_error:
-                                self.add_log(f"⚠️ Errore nell'estrazione dei dati: {str(extraction_error)}")
-                                print(f"DEBUG-LEGACY: Errore nell'estrazione dei dati: {str(extraction_error)}")
-                                print(f"DEBUG-LEGACY: Traceback errore estrazione:\n{traceback.format_exc()}")
-            
-                        except Exception as read_error:
-                            self.add_log(f"⚠️ Errore nella lettura del file context.txt: {str(read_error)}")
-                            print(f"DEBUG-LEGACY: Errore nella lettura del file context.txt: {str(read_error)}")
-                            print(f"DEBUG-LEGACY: Traceback errore lettura:\n{traceback.format_exc()}")
-            
-                    else:
-                        self.add_log("⚠️ File context.txt non trovato!")
-                        print(f"DEBUG-LEGACY: File context.txt non trovato in {os.getcwd()}")
-        
-                        # Elenca i file nella directory corrente
-                        files = os.listdir()
-                        print(f"DEBUG-LEGACY: File nella directory corrente: {files}")
-        
-                        # Cerca file alternativi che potrebbero contenere i dati
-                        context_alternatives = [f for f in files if 'context' in f.lower() or 
-                                              'backup' in f.lower() or f.endswith('.txt')]
-        
-                        if context_alternatives:
-                            print(f"DEBUG-LEGACY: Trovati possibili file alternativi: {context_alternatives}")
-                            self.add_log(f"⚠️ File context.txt non trovato, ma ci sono alternative: {context_alternatives}")
-    
-                except Exception as e:
-                    self.add_log(f"⚠️ Errore nell'estrazione legacy: {str(e)}")
-                    print(f"DEBUG-LEGACY: Errore nell'estrazione legacy: {str(e)}")
-                    print(f"DEBUG-LEGACY: Traceback errore estrazione:\n{traceback.format_exc()}")
-
-            # ================ FASE 6: VALORI DI FALLBACK ================
-            # Se necessario, utilizza valori di fallback per i campi che non è stato possibile estrarre
-
-            print("DEBUG-FINAL: Verifica valori estratti prima di applicare fallback")
-            print(f"DEBUG-FINAL: Titolo estratto: '{book_title_value}'")
-            print(f"DEBUG-FINAL: Indice estratto: {len(book_index_value) if book_index_value else 0} caratteri")
-            print(f"DEBUG-FINAL: Stile voce estratto: '{voice_style_value}'")
-            print(f"DEBUG-FINAL: Tipo libro estratto: '{book_type_value}'")
-
-            # Applica fallback se necessario
-            if not book_title_value:
-                book_title_value = "Il tuo nuovo libro"
-                self.add_log("⚠️ Usato titolo di fallback")
-                print("DEBUG-FINAL: Usato titolo di fallback")
-
-            if not book_index_value:
-                book_index_value = """INTRODUZIONE
-
-    CAPITOLO 1: Fondamenti
-
-    CAPITOLO 2: Metodologia
-
-    CAPITOLO 3: Applicazione
-
-    CONCLUSIONE"""
-                self.add_log("⚠️ Usato indice di fallback")
-                print("DEBUG-FINAL: Usato indice di fallback")
-
-            if not voice_style_value:
-                voice_style_value = "Conversazionale e informativo"
-                self.add_log("⚠️ Usato stile voce di fallback")
-                print("DEBUG-FINAL: Usato stile voce di fallback")
-
-            if not book_type_value:
-                book_type_value = "Manuale (Non-Fiction)"
-                self.add_log("⚠️ Usato tipo libro di fallback")
-                print("DEBUG-FINAL: Usato tipo libro di fallback")
-
-            # ================ FASE 7: AGGIORNAMENTO INTERFACCIA ================
-            # Aggiorna i campi dell'interfaccia con i valori estratti
-
-            print("DEBUG-UPDATE: Tentativo aggiornamento campi interfaccia")
-
-            try:  # try INTERNO per l'aggiornamento Gradio
-                print("DEBUG-UPDATE: Inizio aggiornamento componenti Gradio")
-
-                # Verifica e stampa info sulla versione di Gradio
-                gradio_version = gr.__version__ if hasattr(gr, '__version__') else "sconosciuta"
-                print(f"DEBUG-UPDATE: Versione Gradio rilevata: {gradio_version}")
-
-                # Verifica quali componenti esistono
-                components = {
-                    'book_title': hasattr(self, 'book_title'),
-                    'book_index': hasattr(self, 'book_index'),
-                    'voice_style': hasattr(self, 'voice_style'),
-                    'book_type_hidden': hasattr(self, 'book_type_hidden'),
-                    'tabs': hasattr(self, 'tabs')
-                }
-                print(f"DEBUG-UPDATE: Componenti esistenti: {components}")
-
-                # Per Gradio 5.x, il metodo corretto è .update(value=...)
-
-                if hasattr(self, 'book_title'):
-                    print(f"DEBUG-UPDATE: Aggiornamento book_title: '{book_title_value}'")
-                    try:
-                        self.book_title.value = book_title_value
-                        self.add_log(f"✓ Campo book_title aggiornato")
-                        print(f"DEBUG-UPDATE: Campo book_title aggiornato con: {book_title_value}")
-                    except Exception as e:
-                        print(f"DEBUG-UPDATE: Errore aggiornamento book_title: {str(e)}")
-
-                if hasattr(self, 'book_index'):
-                    print(f"DEBUG-UPDATE: Aggiornamento book_index: {len(book_index_value)} caratteri")
-                    try:
-                        self.book_index.value = book_index_value
-                        self.add_log(f"✓ Campo book_index aggiornato")
-                        print(f"DEBUG-UPDATE: Campo book_index aggiornato (lunghezza: {len(book_index_value)} caratteri)")
-                    except Exception as e:
-                        print(f"DEBUG-UPDATE: Errore aggiornamento book_index: {str(e)}")
-
-                if hasattr(self, 'voice_style'):
-                    print(f"DEBUG-UPDATE: Aggiornamento voice_style: '{voice_style_value}'")
-                    try:
-                        self.voice_style.value = voice_style_value
-                        self.add_log(f"✓ Campo voice_style aggiornato")
-                        print(f"DEBUG-UPDATE: Campo voice_style aggiornato con: {voice_style_value}")
-                    except Exception as e:
-                        print(f"DEBUG-UPDATE: Errore aggiornamento voice_style: {str(e)}")
-
-                # Aggiorna il tipo di libro se esiste il campo
-                if hasattr(self, 'book_type_hidden'):
-                    print(f"DEBUG-UPDATE: Aggiornamento book_type_hidden: '{book_type_value}'")
-                    try:
-                        self.book_type_hidden.value = book_type_value
-                        self.add_log(f"✓ Campo book_type_hidden aggiornato")
-                        print(f"DEBUG-UPDATE: Campo book_type_hidden aggiornato con: {book_type_value}")
-                    except Exception as e:
-                        print(f"DEBUG-UPDATE: Errore aggiornamento book_type_hidden: {str(e)}")
-
-                # Cambia tab
-                if hasattr(self, 'tabs'):
-                    print("DEBUG-UPDATE: Aggiornamento tab a indice 2 (Generazione Libro)")
-                    try:
-                        self.tabs.selected = 2  # Imposta direttamente l'indice selezionato
-                        self.add_log("✓ Tab aggiornato")
-                        print("DEBUG-UPDATE: Tab aggiornato a indice 2 (Generazione Libro)")
-                    except Exception as e:
-                        print(f"DEBUG-UPDATE: Errore aggiornamento tabs: {str(e)}")
-                        # Fallback per tabs
-                        try:
-                            import gradio as gr
-                            self.tabs = gr.Tabs(selected=2)
-                            print("DEBUG-UPDATE: Tab aggiornato con metodo alternativo")
-                        except Exception as alt_e:
-                            print(f"DEBUG-UPDATE: Anche fallback per tabs fallito: {str(alt_e)}")
-
-                # Verifica che Gradio abbia effettivamente aggiornato i campi
-                print("DEBUG-UPDATE: Verifica finale campi aggiornati")
-                if hasattr(self, 'book_title'):
-                    print(f"DEBUG-UPDATE: book_title.value finale: {getattr(self.book_title, 'value', 'N/A')}")
-        
-            except Exception as ui_error:  # AGGIUNGI QUESTO except per chiudere il try INTERNO
-                self.add_log(f"⚠️ Errore nell'aggiornamento UI: {str(ui_error)}")
-                print(f"DEBUG-UPDATE: Errore generale nell'aggiornamento UI: {str(ui_error)}")
-                print(f"DEBUG-UPDATE: Traceback: {traceback.format_exc()}")
-
-            # ================ FASE 8: COMPLETAMENTO ================
-            self.add_log("✅ Funzione complete_analysis terminata con successo")
-            print("DEBUG-FINAL: Funzione complete_analysis terminata con successo")
-            # Un ultimo check prima di restituire i valori
-            print(f"DEBUG-FINAL: Valori finali da restituire:")
-            print(f"DEBUG-FINAL: - Log history: {len(self.log_history)} righe")
-            print(f"DEBUG-FINAL: - Status: {analysis_status_text}")
-            print(f"DEBUG-FINAL: - Tabs: {tabs_value}")
-            print(f"DEBUG-FINAL: - Titolo: {book_title_value}")
-            print(f"DEBUG-FINAL: - Indice: {len(book_index_value)} caratteri")
-            print(f"DEBUG-FINAL: - Stile: {voice_style_value}")
-            print(f"DEBUG-FINAL: - Tipo: {book_type_value}")
-
-            # ================ FASE 8.5: SALVATAGGIO NEL DATABASE ================
-            try:
-                # CORREZIONE: Recupera la keyword corrente dal file più recente
-                backup_dir = "backups"
-                current_keyword = None
-    
-                # Tentativo 1: Cerca nei file di backup più recenti prima di tutto
-                if os.path.exists(backup_dir):
-                    backup_files = [f for f in os.listdir(backup_dir) 
-                                  if f.startswith("context_") and f.endswith(".txt")]
-                    if backup_files:
-                        # Ordina per data di modifica (più recente prima)
-                        backup_files.sort(key=lambda x: os.path.getmtime(os.path.join(backup_dir, x)), 
-                                        reverse=True)
-                        latest_file = backup_files[0]
-                        self.add_log(f"🔍 File di backup più recente trovato: {latest_file}")
-            
-                        # Estrai la keyword dal nome del file
-                        keyword_match = re.match(r"context_(.+?)(_\d{8}_\d{6})?\.txt", latest_file)
-                        if keyword_match:
-                            current_keyword = keyword_match.group(1).replace("_", " ")
-                            self.add_log(f"🔍 Keyword trovata dal file più recente: {current_keyword}")
-    
-                # Tentativo 2: Solo se non abbiamo trovato la keyword dai backup
-                if not current_keyword:
-                    # Estrai la keyword dall'analisi corrente
-                    if hasattr(self, 'current_analysis') and self.current_analysis:
-                        keyword = self.current_analysis.get('KEYWORD')
-                        if keyword:
-                            current_keyword = keyword
-                            self.add_log(f"🔍 Usando keyword dall'analisi: {current_keyword}")
-                            print(f"DEBUG-DB: Usando keyword dall'analisi: {current_keyword}")
-
-                    # Se ancora non abbiamo una keyword, prova con il titolo del libro
-                    if not current_keyword and book_title_value:
-                        keyword = book_title_value.split(':')[0].strip()  # Prende la prima parte del titolo
-                        current_keyword = keyword
-                        self.add_log(f"🔍 Usando keyword dal titolo: {current_keyword}")
-                        print(f"DEBUG-DB: Usando keyword dal titolo: {current_keyword}")
-
-                # Tentativo 3: Ultima risorsa, usa un valore predefinito
-                if not current_keyword:
-                    current_keyword = "Unknown Project"
-                    self.add_log(f"⚠️ Nessuna keyword trovata, usando valore predefinito: {current_keyword}")
-                    print(f"DEBUG-DB: Nessuna keyword trovata, usando valore predefinito: {current_keyword}")
-
-                # Salva nel database solo se abbiamo una keyword
-                self.add_log(f"💾 Tentativo salvataggio analisi nel database per keyword: {current_keyword}")
-                print(f"DEBUG-DB: Tentativo salvataggio con keyword: {current_keyword}")
-
-                try:
-                    # Verifica che il database esista
-                    if os.path.exists(self.crisp.project_db_path):
-                        # Crea un nuovo progetto nel database
-                        conn = sqlite3.connect(self.crisp.project_db_path)
-                        cursor = conn.cursor()
-
-                        # Genera un ID progetto appropriato
-                        from datetime import datetime
-                        current_date = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        project_id = f"PROJ_{current_date}"
-
-                        # Formatta il nome del progetto usando la keyword corretta
-                        project_name = f"{current_keyword} - {datetime.now().strftime('%Y-%m-%d')}"
-
-                        # Inserisci nel database con ID esplicito
-                        current_datetime = datetime.now().isoformat()
-                        cursor.execute(
-                            "INSERT INTO projects (id, name, creation_date, last_updated) VALUES (?, ?, ?, ?)",
-                            (project_id, project_name, current_datetime, current_datetime)
-                        )
-
-                        # Salva le variabili principali di progetto
-                        main_vars = {
-                            "KEYWORD": current_keyword,
-                            "TITOLO_LIBRO": book_title_value,
-                            "INDICE_LIBRO": book_index_value,
-                            "VOICE_STYLE": voice_style_value,
-                            "BOOK_TYPE": book_type_value
-                        }
-
-                        # Inserisci le variabili nel database
-                        for key, value in main_vars.items():
-                            if value:  # Salva solo valori non vuoti
-                                cursor.execute(
-                                    "INSERT INTO project_variables (project_id, variable_name, variable_value) VALUES (?, ?, ?)",
-                                    (project_id, key, str(value))
-                                )
-
-                        # Se esistono dati in current_analysis, salvali come variabili
-                        if hasattr(self, 'current_analysis') and self.current_analysis:
-                            for key, value in self.current_analysis.items():
-                                if key not in main_vars and value:  # Evita duplicati
-                                    cursor.execute(
-                                        "INSERT INTO project_variables (project_id, variable_name, variable_value) VALUES (?, ?, ?)",
-                                        (project_id, key, str(value))
-                                    )
-
-                        # Salva il contenuto del file di contesto come risultato di progetto
-                        if hasattr(self.chat_manager, 'context_file') and os.path.exists(self.chat_manager.context_file):
-                            with open(self.chat_manager.context_file, 'r', encoding='utf-8') as f:
-                                context_content = f.read()
-
-                            cursor.execute(
-                                "INSERT INTO project_results (project_id, step_id, result_text, timestamp) VALUES (?, ?, ?, ?)",
-                                (project_id, "ANALISI", context_content, current_datetime)
-                            )
-
-                        conn.commit()
-                        conn.close()
-
-                        self.add_log(f"✅ Analisi salvata con successo nel database (ID: {project_id})")
-                        print(f"DEBUG-DB: Analisi salvata con successo, ID: {project_id}")
-                    else:
-                        self.add_log(f"⚠️ Database non trovato: {self.crisp.project_db_path}")
-                        print(f"DEBUG-DB: Database non trovato: {self.crisp.project_db_path}")
-                except Exception as db_error:
-                    self.add_log(f"⚠️ Errore durante il salvataggio nel database: {str(db_error)}")
-                    print(f"DEBUG-DB: Errore salvataggio DB: {str(db_error)}")
-                    print(f"DEBUG-DB: {traceback.format_exc()}")
-            except Exception as save_error:
-                self.add_log(f"⚠️ Errore generale nel salvataggio: {str(save_error)}")
-                print(f"DEBUG-DB: Errore generale nel salvataggio: {str(save_error)}")
-
-            # Alla fine, dopo il completamento dell'analisi
-                self.add_log("🔍 Tentativo di estrazione automatica del tono di voce...")
-                voice_style_name = self.extract_and_save_voice_style()
-        
-                if voice_style_name:
-                    self.add_log(f"✅ File di tono di voce creato: {voice_style_name}")
-            
-                    # Se abbiamo un dropdown per la selezione del tono di voce, aggiorniamolo
-                    if hasattr(self, 'voice_style_file'):
-                        # Ottieni la lista aggiornata di file di stile
-                        import os
-                        voice_style_files = ["Nessuno"] + [os.path.splitext(f)[0] for f in os.listdir("voice_styles") if f.endswith(".txt")]
-                
-                        # Aggiorna il dropdown e seleziona automaticamente il nuovo stile
-                        self.voice_style_file.choices = voice_style_files
-                        self.voice_style_file.value = voice_style_name
-                
-                        self.add_log(f"✅ Tono di voce '{voice_style_name}' selezionato automaticamente")                    
-
-            # ================ FASE 9: RESTITUZIONE VALORI ================
-            # Restituzione esattamente 6 valori come richiesto dall'interfaccia
-            return self.chat_manager.get_log_history_string(), analysis_status_text, tabs_value, book_title_value, book_index_value, voice_style_value
-
-        except Exception as e:
-            # Gestione errori globale - questo è l'UNICO except per il try principale
-            error_msg = f"❌ Errore durante il completamento dell'analisi: {str(e)}"
-            self.add_log(error_msg)
-            print(f"DEBUG-ERROR: ERRORE CRITICO in complete_analysis: {str(e)}")
-
-            # Traceback completo dell'errore
-            error_trace = traceback.format_exc()
-            self.add_log(f"Dettagli errore:\n{error_trace}")
-            print(f"DEBUG-ERROR: Traceback completo:\n{error_trace}")
-
-            # Restituisci valori minimi in caso di errore critico
-            print("DEBUG-ERROR: Restituzione valori di fallback a causa dell'errore")
-            return self.chat_manager.get_log_history_string(), "**Stato analisi**: Errore", gr.Tabs(selected=0), "", "", ""
-
-
-    def _complete_analysis_crisp(self):
-        """Completa l'analisi CRISP 5.0"""
-        try:
-            self.add_log("Completamento analisi CRISP 5.0...")
-
-            # Recupera l'ID del progetto CRISP corrente
-            project_id = self.current_analysis.get('crisp_project_id')
-            if not project_id:
-                return self.add_log("Errore: Nessun progetto CRISP corrente trovato")
-
-            # Recupera i dati completi del progetto
-            project_data = self.crisp.get_project_data(project_id)
-
-            # Aggiorna l'interfaccia con i dati estratti
-            if hasattr(self, 'book_title') and 'TITOLO_LIBRO' in project_data:
-                self.book_title.update(value=project_data['TITOLO_LIBRO'])
-
-            if hasattr(self, 'book_language') and 'LINGUA' in project_data:
-                self.book_language.update(value=project_data['LINGUA'])
-
-            if hasattr(self, 'voice_style') and 'VOICE_STYLE' in project_data:
-                self.voice_style.update(value=project_data['VOICE_STYLE'])
-
-            # Costruisci l'indice del libro in base ai CONTENT_PILLARS
-            if hasattr(self, 'book_index') and 'CONTENT_PILLARS' in project_data:
-                # Estrai i pilastri di contenuto e trasformali in un indice
-                pillars_text = project_data.get('CONTENT_PILLARS', '')
-        
-                # Cerca di estrarre i titoli dei pilastri
-                pillars = []
-                if isinstance(pillars_text, str):
-                    # Cerca di estrarre i pilastri con regex
-                    pillar_matches = re.findall(r'(\d+\.\s*[^\n]+)', pillars_text)
-                    if pillar_matches:
-                        pillars = [p.strip() for p in pillar_matches]
-                    else:
-                        # Alternativa: dividi per linee e filtra le linee non vuote
-                        pillar_lines = [line.strip() for line in pillars_text.split('\n') if line.strip()]
-                        pillars = pillar_lines[:5]  # Limita a 5 pilastri
-        
-                # Se abbiamo trovato dei pilastri, costruisci l'indice
-                if pillars:
-                    index_text = "INTRODUZIONE\n\n"
-                    for i, pillar in enumerate(pillars, 1):
-                        # Pulisci il pillar rimuovendo numeri e simboli iniziali
-                        clean_pillar = re.sub(r'^\d+[\.\)\s]+', '', pillar).strip()
-                        index_text += f"CAPITOLO {i}: {clean_pillar}\n"
-                    index_text += "\nCONCLUSIONE"
-                else:
-                    # Indice di fallback se non troviamo pillars
-                    index_text = "INTRODUZIONE\n\nCAPITOLO 1: Fondamenti\n\nCAPITOLO 2: Metodologia\n\nCAPITOLO 3: Applicazione\n\nCAPITOLO 4: Casi Studio\n\nCAPITOLO 5: Risultati\n\nCONCLUSIONE"
-            
-                self.book_index.update(value=index_text)
-        
-            # Mostra la sezione dei dettagli del libro
-            if hasattr(self, 'book_details'):
-                self.book_details.update(visible=True)
-        
-            # Crea un riepilogo dei dati estratti
-            summary = f"""
-            ===== ANALISI CRISP 5.0 COMPLETATA =====
-    
-            Titolo: {project_data.get('TITOLO_LIBRO', 'N/A')}
-            Sottotitolo: {project_data.get('SOTTOTITOLO_LIBRO', 'N/A')}
-    
-            Angolo di Attacco: {project_data.get('ANGOLO_ATTACCO', 'N/A')}
-            Big Idea: {project_data.get('BIG_IDEA', 'N/A')}
-            Buyer Persona: {project_data.get('BUYER_PERSONA_SUMMARY', 'N/A')}
-    
-            Promessa Principale: {project_data.get('PROMESSA_PRINCIPALE', 'N/A')}
-    
-            L'interfaccia è stata aggiornata con i dati del progetto.
-            Puoi ora procedere con la generazione del libro.
-            """
-        
-            # Salvataggio nel database
-            try:
-                self.add_log("💾 Salvataggio dei risultati CRISP nel database...")
-            
-                # Il progetto è già salvato nel framework CRISP,
-                # ma possiamo aggiungerlo anche al database generale per la visualizzazione
-                if os.path.exists(self.crisp.project_db_path):
-                    conn = sqlite3.connect(self.crisp.project_db_path)
-                    cursor = conn.cursor()
-                
-                    # Verifica se il progetto esiste già nel database
-                    cursor.execute("SELECT id FROM projects WHERE name = ?", (f"CRISP-{project_id}",))
-                    existing = cursor.fetchone()
-                
-                    if not existing:
-                        # Crea una entry nel database principale
-                        current_date = datetime.now().isoformat()
-                        cursor.execute(
-                            "INSERT INTO projects (name, creation_date, last_updated) VALUES (?, ?, ?)",
-                            (f"CRISP-{project_id}", current_date, current_date)
-                        )
-                    
-                        # Salva i principali metadati come variabili
-                        db_project_id = cursor.lastrowid
-                    
-                        # Se il progetto è stato salvato correttamente
-                        if db_project_id:
-                            # Salva keyword e altre informazioni chiave
-                            keyword = project_data.get('KEYWORD', '')
-                            cursor.execute(
-                                "INSERT INTO project_variables (project_id, variable_name, variable_value) VALUES (?, ?, ?)",
-                                (db_project_id, 'KEYWORD', keyword)
-                            )
-                        
-                            # Salva riferimento al progetto CRISP originale
-                            cursor.execute(
-                                "INSERT INTO project_variables (project_id, variable_name, variable_value) VALUES (?, ?, ?)",
-                                (db_project_id, 'CRISP_PROJECT_ID', str(project_id))
-                            )
-                        
-                            # Registra avvenuto salvataggio
-                            cursor.execute(
-                                "INSERT INTO project_results (project_id, step_id, result_text, timestamp) VALUES (?, ?, ?, ?)",
-                                (db_project_id, "CRISP_SUMMARY", summary, current_date)
-                            )
-                        
-                            conn.commit()
-                            self.add_log(f"✅ Riferimento al progetto CRISP salvato nel database principale (ID: {db_project_id})")
-                    else:
-                        self.add_log("ℹ️ Progetto CRISP già presente nel database")
-                
-                    conn.close()
-            except Exception as db_error:
-                self.add_log(f"⚠️ Errore durante il salvataggio nel database: {str(db_error)}")
-                print(f"DEBUG-DB: Errore salvataggio DB: {str(db_error)}")           
-
-            self.add_log(summary)
-            return self.chat_manager.get_log_history_string()
-        
-        except Exception as e:
-            error_msg = f"Errore durante il completamento dell'analisi CRISP 5.0: {str(e)}"
-            self.add_log(error_msg)
-            logging.error(error_msg)
-            return self.chat_manager.get_log_history_string()   
 
 
     
-    def _complete_analysis_crisp(self):
-        """Completa l'analisi CRISP 5.0"""
-        try:
-            self.add_log("Completamento analisi CRISP 5.0...")
 
-            # Recupera l'ID del progetto CRISP corrente
-            project_id = self.current_analysis.get('crisp_project_id')
-            if not project_id:
-                return self.add_log("Errore: Nessun progetto CRISP corrente trovato")
-
-            # Recupera i dati completi del progetto
-            project_data = self.crisp.get_project_data(project_id)
-
-            # Aggiorna l'interfaccia con i dati estratti
-            if hasattr(self, 'book_title') and 'TITOLO_LIBRO' in project_data:
-                self.book_title.update(value=project_data['TITOLO_LIBRO'])
-
-            if hasattr(self, 'book_language') and 'LINGUA' in project_data:
-                self.book_language.update(value=project_data['LINGUA'])
-
-            if hasattr(self, 'voice_style') and 'VOICE_STYLE' in project_data:
-                self.voice_style.update(value=project_data['VOICE_STYLE'])
-
-            # Costruisci l'indice del libro in base ai CONTENT_PILLARS
-            if hasattr(self, 'book_index') and 'CONTENT_PILLARS' in project_data:
-                # Estrai i pilastri di contenuto e trasformali in un indice
-                pillars_text = project_data.get('CONTENT_PILLARS', '')
-            
-                # Cerca di estrarre i titoli dei pilastri
-                pillars = []
-                if isinstance(pillars_text, str):
-                    # Cerca di estrarre i pilastri con regex
-                    pillar_matches = re.findall(r'(\d+\.\s*[^\n]+)', pillars_text)
-                    if pillar_matches:
-                        pillars = [p.strip() for p in pillar_matches]
-                    else:
-                        # Alternativa: dividi per linee e filtra le linee non vuote
-                        pillar_lines = [line.strip() for line in pillars_text.split('\n') if line.strip()]
-                        pillars = pillar_lines[:5]  # Limita a 5 pilastri
-            
-                # Se abbiamo trovato dei pilastri, costruisci l'indice
-                if pillars:
-                    index_text = "INTRODUZIONE\n\n"
-                    for i, pillar in enumerate(pillars, 1):
-                        # Pulisci il pillar rimuovendo numeri e simboli iniziali
-                        clean_pillar = re.sub(r'^\d+[\.\)\s]+', '', pillar).strip()
-                        index_text += f"CAPITOLO {i}: {clean_pillar}\n"
-                    index_text += "\nCONCLUSIONE"
-                else:
-                    # Indice di fallback se non troviamo pillars
-                    index_text = "INTRODUZIONE\n\nCAPITOLO 1: Fondamenti\n\nCAPITOLO 2: Metodologia\n\nCAPITOLO 3: Applicazione\n\nCAPITOLO 4: Casi Studio\n\nCAPITOLO 5: Risultati\n\nCONCLUSIONE"
-                
-                self.book_index.update(value=index_text)
-            
-            # Mostra la sezione dei dettagli del libro
-            if hasattr(self, 'book_details'):
-                self.book_details.update(visible=True)
-            
-            # Crea un riepilogo dei dati estratti
-            summary = f"""
-            ===== ANALISI CRISP 5.0 COMPLETATA =====
-        
-            Titolo: {project_data.get('TITOLO_LIBRO', 'N/A')}
-            Sottotitolo: {project_data.get('SOTTOTITOLO_LIBRO', 'N/A')}
-        
-            Angolo di Attacco: {project_data.get('ANGOLO_ATTACCO', 'N/A')}
-            Big Idea: {project_data.get('BIG_IDEA', 'N/A')}
-            Buyer Persona: {project_data.get('BUYER_PERSONA_SUMMARY', 'N/A')}
-        
-            Promessa Principale: {project_data.get('PROMESSA_PRINCIPALE', 'N/A')}
-        
-            L'interfaccia è stata aggiornata con i dati del progetto.
-            Puoi ora procedere con la generazione del libro.
-            """
-            
-            # Salvataggio nel database
-            try:
-                self.add_log("💾 Salvataggio dei risultati CRISP nel database...")
-                
-                # Il progetto è già salvato nel framework CRISP,
-                # ma possiamo aggiungerlo anche al database generale per la visualizzazione
-                if os.path.exists(self.crisp.project_db_path):
-                    conn = sqlite3.connect(self.crisp.project_db_path)
-                    cursor = conn.cursor()
-                    
-                    # Verifica se il progetto esiste già nel database
-                    cursor.execute("SELECT id FROM projects WHERE name = ?", (f"CRISP-{project_id}",))
-                    existing = cursor.fetchone()
-                    
-                    if not existing:
-                        # Crea una entry nel database principale
-                        current_date = datetime.now().isoformat()
-                        cursor.execute(
-                            "INSERT INTO projects (name, creation_date, last_updated) VALUES (?, ?, ?)",
-                            (f"CRISP-{project_id}", current_date, current_date)
-                        )
-                        
-                        # Salva i principali metadati come variabili
-                        db_project_id = cursor.lastrowid
-                        
-                        # Se il progetto è stato salvato correttamente
-                        if db_project_id:
-                            # Salva keyword e altre informazioni chiave
-                            keyword = project_data.get('KEYWORD', '')
-                            cursor.execute(
-                                "INSERT INTO project_variables (project_id, variable_name, variable_value) VALUES (?, ?, ?)",
-                                (db_project_id, 'KEYWORD', keyword)
-                            )
-                            
-                            # Salva riferimento al progetto CRISP originale
-                            cursor.execute(
-                                "INSERT INTO project_variables (project_id, variable_name, variable_value) VALUES (?, ?, ?)",
-                                (db_project_id, 'CRISP_PROJECT_ID', str(project_id))
-                            )
-                            
-                            # Registra avvenuto salvataggio
-                            cursor.execute(
-                                "INSERT INTO project_results (project_id, step_id, result_text, timestamp) VALUES (?, ?, ?, ?)",
-                                (db_project_id, "CRISP_SUMMARY", summary, current_date)
-                            )
-                            
-                            conn.commit()
-                            self.add_log(f"✅ Riferimento al progetto CRISP salvato nel database principale (ID: {db_project_id})")
-                    else:
-                        self.add_log("ℹ️ Progetto CRISP già presente nel database")
-                    
-                    conn.close()
-            except Exception as db_error:
-                self.add_log(f"⚠️ Errore durante il salvataggio nel database: {str(db_error)}")
-                print(f"DEBUG-DB: Errore salvataggio DB: {str(db_error)}")           
-
-            self.add_log(summary)
-            return self.chat_manager.get_log_history_string()
-            
-        except Exception as e:
-            error_msg = f"Errore durante il completamento dell'analisi CRISP 5.0: {str(e)}"
-            self.add_log(error_msg)
-            logging.error(error_msg)
-            return self.chat_manager.get_log_history_string()
 
     
-    def _complete_analysis_legacy(self):
-        """Completa l'analisi legacy e mostra una finestra di dialogo per la selezione"""
-        try:
-            self.add_log("Completamento analisi legacy...")
-
-            # 1. Recupera i dati dall'analisi salvata
-            context_file = "context.txt"
-    
-            try:
-                with open(context_file, "r", encoding="utf-8") as f:
-                    full_text = f.read()
-        
-                # Estrai le diverse sezioni in base ai punti numerati
-                # Cerca titoli e indici
-                titoli_section = re.search(r'7\)\s+\*\*Titolo\s+&\s+sottotitolo[^F]*?FINE', full_text, re.DOTALL)
-                indice_section = re.search(r'8\)\s+\*\*Indice\s+del\s+libro[^F]*?FINE', full_text, re.DOTALL)
-        
-                titoli_text = titoli_section.group(0) if titoli_section else ""
-                indice_text = indice_section.group(0) if indice_section else ""
-        
-                # Estrai le opzioni di titolo
-                titoli_options = []
-                titoli_matches = re.finditer(r'(?:Opzione|Titolo)\s+\d+[:\)]\s+[""]?([^"\n]+)[""]?(?:\s*[:–-]\s*[""]?([^"\n]+)[""]?)?', titoli_text)
-    
-                for i, match in enumerate(titoli_matches, 1):
-                    titolo = match.group(1).strip() if match.group(1) else ""
-                    sottotitolo = match.group(2).strip() if match.group(2) else ""
-                    if titolo:
-                        titoli_options.append({
-                            "id": i,
-                            "titolo": titolo, 
-                            "sottotitolo": sottotitolo,
-                            "display": f"Opzione {i}: {titolo} - {sottotitolo}"
-                        })
-    
-                # Estrai gli indici proposti
-                indici_options = []
-                indici_matches = re.finditer(r'(?:Indice|INDICE|CAPITOLI)[^\n]*\n(.*?)(?=\n\n|\n[A-Z]|$)', indice_text, re.DOTALL)
-    
-                for i, match in enumerate(indici_matches, 1):
-                    indice_content = match.group(1).strip()
-                    # Pulisci e formatta l'indice
-                    indice_lines = [line.strip() for line in indice_content.split('\n') if line.strip()]
-                    indice_formatted = "\n".join(indice_lines)
-                    indici_options.append({
-                        "id": i,
-                        "content": indice_formatted,
-                        "display": f"Indice {i}"
-                    })
-    
-                # Estrai il tono di voce suggerito
-                voice_style_match = re.search(r'(?:tono|stile|voce)[^:]*[:]\s*([^\n\.]+)', full_text, re.IGNORECASE)
-                voice_style = voice_style_match.group(1).strip() if voice_style_match else "Conversazionale"
-    
-                # Salva temporaneamente le opzioni per l'uso nella finestra di dialogo
-                self.temp_titles = titoli_options
-                self.temp_indices = indici_options
-                self.temp_voice_style = voice_style
-            
-                # Log delle opzioni
-                self.add_log("\n=== OPZIONI DI SELEZIONE ===")
-                self.add_log(f"Titoli disponibili: {len(titoli_options)}")
-                for t in titoli_options:
-                    self.add_log(f"- {t['display']}")
-                
-                self.add_log(f"Indici disponibili: {len(indici_options)}")
-                for idx in indici_options:
-                    preview = idx['content'][:50] + "..." if len(idx['content']) > 50 else idx['content']
-                    self.add_log(f"- Indice {idx['id']}: {preview}")
-                
-                self.add_log(f"Stile di voce: {voice_style}")
-            
-                # Crea una finestra di dialogo per la selezione
-                self.create_selection_dialog(titoli_options, indici_options, voice_style)
-            
-                return self.chat_manager.get_log_history_string()
-    
-            except Exception as e:
-                self.add_log(f"⚠️ Errore nell'analisi del contesto: {str(e)}")
-                import traceback
-                self.add_log(traceback.format_exc())
-                return self.chat_manager.get_log_history_string()
-
-                # Salvataggio nel database
-                try:
-                    # Estrai keyword dal contesto o dal titolo
-                    keyword = None
-                    
-                    # Cerca la keyword nel testo
-                    keyword_match = re.search(r'(?:keyword|parola chiave)[^:]*?:\s*([^\n]+)', full_text, re.IGNORECASE)
-                    if keyword_match:
-                        keyword = keyword_match.group(1).strip()
-                    
-                    # Se non trovata, usa il titolo della prima opzione
-                    if not keyword and titoli_options:
-                        keyword = titoli_options[0]['titolo'].split()[0]  # Prima parola del primo titolo
-                    
-                    # Se abbiamo una keyword, salva nel database
-                    if keyword:
-                        self.add_log(f"💾 Salvataggio analisi legacy nel database per keyword: {keyword}")
-                        
-                        if os.path.exists(self.crisp.project_db_path):
-                            conn = sqlite3.connect(self.crisp.project_db_path)
-                            cursor = conn.cursor()
-                            
-                            # Crea un nuovo progetto
-                            current_date = datetime.now().isoformat()
-                            cursor.execute(
-                                "INSERT INTO projects (name, creation_date, last_updated) VALUES (?, ?, ?)",
-                                (f"Legacy-{keyword}", current_date, current_date)
-                            )
-                            project_id = cursor.lastrowid
-                            
-                            # Salva la keyword
-                            cursor.execute(
-                                "INSERT INTO project_variables (project_id, variable_name, variable_value) VALUES (?, ?, ?)",
-                                (project_id, "KEYWORD", keyword)
-                            )
-                            
-                            # Salva le opzioni di titolo
-                            if titoli_options:
-                                title_json = json.dumps(titoli_options)
-                                cursor.execute(
-                                    "INSERT INTO project_variables (project_id, variable_name, variable_value) VALUES (?, ?, ?)",
-                                    (project_id, "TITLE_OPTIONS", title_json)
-                                )
-                            
-                            # Salva le opzioni di indice
-                            if indici_options:
-                                index_json = json.dumps(indici_options)
-                                cursor.execute(
-                                    "INSERT INTO project_variables (project_id, variable_name, variable_value) VALUES (?, ?, ?)",
-                                    (project_id, "INDEX_OPTIONS", index_json)
-                                )
-                            
-                            # Salva il tono di voce
-                            if voice_style:
-                                cursor.execute(
-                                    "INSERT INTO project_variables (project_id, variable_name, variable_value) VALUES (?, ?, ?)",
-                                    (project_id, "VOICE_STYLE", voice_style)
-                                )
-                            
-                            # Salva il testo completo
-                            cursor.execute(
-                                "INSERT INTO project_results (project_id, step_id, result_text, timestamp) VALUES (?, ?, ?, ?)",
-                                (project_id, "ANALISI_LEGACY", full_text, current_date)
-                            )
-                            
-                            conn.commit()
-                            conn.close()
-                            
-                            self.add_log(f"✅ Analisi legacy salvata nel database (ID: {project_id})")
-                    else:
-                        self.add_log("⚠️ Impossibile salvare nel database: keyword non trovata")
-                except Exception as db_error:
-                    self.add_log(f"⚠️ Errore durante il salvataggio nel database: {str(db_error)}")
-                    import traceback
-                    self.add_log(traceback.format_exc())
-
-        except Exception as e:
-            error_msg = f"Errore durante il completamento dell'analisi: {str(e)}"
-            self.add_log(error_msg)
-            logging.error(error_msg)
-            return self.chat_manager.get_log_history_string()
 
     def create_selection_dialog(self, titoli_options, indici_options, voice_style):
         """Crea una finestra di dialogo per selezionare titolo, indice e stile di voce"""
@@ -4749,6 +3125,102 @@ class AIBookBuilder:
     
         return recommended_images, notes
 
+    def transfer_to_book_tab(self):
+        """
+        Trasferisce i dati dall'analisi alla tab di generazione del libro.
+        Include la pulizia dei dati estratti dall'HTML.
+        """
+        try:
+            # Estrai i dati dall'analisi
+            book_data = self.extract_data_for_book_generation()
+            if not book_data:
+                self.add_log("⚠️ Nessun dato disponibile da trasferire")
+                return "Nessun dato disponibile", "", "", "", "", ""
+        
+            # Funzione per pulire i valori dai tag HTML e codifiche
+            def clean_value(value):
+                if not value:
+                    return ""
+            
+                # Rimuovi HTML entities e caratteri speciali
+                import re
+                import html
+            
+                # Decodifica HTML entities come &quot;
+                value = html.unescape(value)
+            
+                # Rimuovi tag HTML rimanenti
+                value = re.sub(r'<[^>]+>', '', value)
+            
+                # Rimuovi prefissi come "Percepita: " o simili
+                prefixes = ["Percepita:", "Percepita", "strutturato:", "strutturato", "Persona Narrativa"]
+                for prefix in prefixes:
+                    if value.startswith(prefix):
+                        value = value[len(prefix):].strip()
+            
+                return value.strip()
+        
+            # Prepara i dati per l'aggiornamento dei componenti
+            title = clean_value(book_data.get('title', ''))
+            subtitle = clean_value(book_data.get('subtitle', ''))
+            voice_style = clean_value(book_data.get('voice_style', ''))
+            angle = clean_value(book_data.get('angle', ''))
+            usp = clean_value(book_data.get('usp', ''))
+            book_index = book_data.get('index', '')
+        
+            # Pulisci anche l'indice, ma preserva la formattazione delle righe
+            if book_index:
+                # Decodifica HTML entities nell'indice
+                import html
+                book_index = html.unescape(book_index)
+            
+                # Rimuovi tag HTML preservando interruzioni di riga
+                import re
+                book_index = re.sub(r'<br\s*/?>|<p>|</p>', '\n', book_index)
+                book_index = re.sub(r'<[^>]+>', '', book_index)
+            
+                # Pulisci spazi e righe vuote multiple
+                book_index = re.sub(r'\n\s*\n', '\n\n', book_index)
+                book_index = book_index.strip()
+        
+            # Log delle informazioni pulite
+            self.add_log(f"📚 Preparazione dati per generazione libro:")
+            self.add_log(f"✓ Titolo: {title}")
+            if subtitle:
+                self.add_log(f"✓ Sottotitolo: {subtitle}")
+            self.add_log(f"✓ Tono di voce: {voice_style}")
+            self.add_log(f"✓ Angolo editoriale: {angle}")
+            self.add_log(f"✓ USP: {usp}")
+            self.add_log(f"✓ Indice: {len(book_index)} caratteri")
+        
+            # Prepara titolo completo
+            full_title = f"{title}" + (f" - {subtitle}" if subtitle else "")
+        
+            self.add_log("✅ Dati trasferiti e puliti per la tab di generazione libro")
+        
+            # Restituisci i valori puliti per aggiornare tutti i componenti
+            return (
+                "Dati trasferiti con successo. Ora puoi passare alla tab 'Generazione Libro'.",
+                full_title,  # book_title 
+                voice_style,  # voice_style
+                angle,  # editorial_angle
+                usp,  # book_usp
+                book_index  # book_index
+            )
+        
+        except Exception as e:
+            self.add_log(f"❌ Errore nel trasferimento dei dati: {str(e)}")
+            import traceback
+            self.add_log(traceback.format_exc())
+            return (
+                f"Errore: {str(e)}",
+                "",  # book_title
+                "",  # voice_style 
+                "",  # editorial_angle
+                "",  # book_usp
+                ""   # book_index
+            )
+
     def refresh_projects(self):
         """Aggiorna la lista dei progetti disponibili e aggiorna il dropdown"""
         try:
@@ -4853,140 +3325,7 @@ class AIBookBuilder:
             self.add_log(f"⚠️ Errore nella preparazione del contesto dell'analisi: {str(e)}")
             return ""
     
-    def _generate_book_crisp(self, book_title, book_language, voice_style, book_index, params=None, analysis_context=None):
-        """
-        Genera il libro usando il framework CRISP 5.0.
-        Ora delega alla funzione in framework/book_generator.py
     
-        Args:
-            book_title: Titolo del libro
-            book_language: Lingua del libro
-            voice_style: Stile narrativo
-            book_index: Indice del libro
-            params: Parametri aggiuntivi (ignorati nella versione delegata)
-            analysis_context: Contesto dell'analisi (ignorato nella versione delegata)
-    
-        Returns:
-            str: Log dell'operazione
-        """
-        from framework.book_generator import generate_book_crisp
-    
-        try:
-            # Logga info sui parametri aggiuntivi (che saranno ignorati nella chiamata)
-            if params:
-                param_keys = list(params.keys())
-                self.add_log(f"📝 Nota: Parametri aggiuntivi disponibili ma non utilizzati nel modulo esterno: {param_keys}")
-        
-            if analysis_context:
-                self.add_log(f"📝 Nota: Contesto analisi disponibile ({len(analysis_context)} caratteri) ma non utilizzato nel modulo esterno")
-            
-                # Come soluzione temporanea, salviamo il contesto in un file che potrebbe essere utilizzato
-                # dal modulo esterno se implementato per cercarlo
-                try:
-                    import os
-                    from datetime import datetime
-                
-                    os.makedirs("temp", exist_ok=True)
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                    context_file = f"temp/analysis_context_{timestamp}.txt"
-                
-                    with open(context_file, "w", encoding="utf-8") as f:
-                        f.write(analysis_context)
-                    
-                    self.add_log(f"📄 Contesto dell'analisi salvato in: {context_file}")
-                
-                    # Estendi current_analysis con il percorso al file del contesto
-                    if hasattr(self, 'current_analysis') and self.current_analysis:
-                        self.current_analysis['analysis_context_file'] = context_file
-                except Exception as ctx_error:
-                    self.add_log(f"⚠️ Impossibile salvare il contesto: {str(ctx_error)}")
-        
-            # Chiama la funzione nel modulo esterno con i parametri standard
-            result = generate_book_crisp(
-                book_title, 
-                book_language, 
-                voice_style, 
-                book_index,
-                crisp_framework=self.crisp,
-                driver=self.driver,
-                chat_manager=self.chat_manager,
-                current_analysis=self.current_analysis
-            )
-    
-            # Il risultato potrebbe essere il percorso del libro o un messaggio di errore
-            if result and not result.startswith("Errore:"):
-                self.add_log(f"📚 Libro generato con successo: {result}")
-            else:
-                self.add_log(f"❌ {result}")
-            
-        except Exception as e:
-            self.add_log(f"❌ Errore durante la generazione del libro: {str(e)}")
-            import traceback
-            self.add_log(traceback.format_exc())
-    
-        return self.chat_manager.get_log_history_string()
-
-    
-    def _generate_book_legacy(self, book_title, book_language, voice_style, book_index, params=None, analysis_context=None):
-        """
-        Metodo legacy per generare il libro.
-        Ora delega alla funzione in framework/book_generator.py
-    
-        Args:
-            book_title: Titolo del libro
-            book_language: Lingua del libro
-            voice_style: Stile narrativo
-            book_index: Indice del libro
-            params: Parametri aggiuntivi (ignorati nella versione delegata)
-            analysis_context: Contesto dell'analisi (ignorato nella versione delegata)
-    
-        Returns:
-            str: Log dell'operazione
-        """
-        from framework.book_generator import generate_book_legacy
-    
-        try:
-            # Logga info sui parametri aggiuntivi (che saranno ignorati nella chiamata)
-            if params:
-                param_keys = list(params.keys())
-                self.add_log(f"📝 Nota: Parametri aggiuntivi disponibili ma non utilizzati nel modulo esterno: {param_keys}")
-        
-            if analysis_context:
-                self.add_log(f"📝 Nota: Contesto analisi disponibile ({len(analysis_context)} caratteri) ma non utilizzato nel modulo esterno")
-            
-                # Come soluzione temporanea, salviamo il contesto in un file che potrebbe essere utilizzato
-                # internamente se il modulo legacy cerca un file di contesto specifico
-                try:
-                    # Se esiste già un file context.txt, aggiungiamo una nota
-                    if os.path.exists("context.txt"):
-                        with open("context.txt", "a", encoding="utf-8") as f:
-                            f.write("\n\n=== CONTESTO AGGIUNTIVO PER LIBRO ===\n\n")
-                            f.write(analysis_context)
-                        
-                        self.add_log(f"📄 Contesto dell'analisi aggiunto al file context.txt")
-                except Exception as ctx_error:
-                    self.add_log(f"⚠️ Impossibile aggiungere il contesto: {str(ctx_error)}")
-        
-            # Chiama la funzione nel modulo esterno con i parametri standard
-            result = generate_book_legacy(
-                book_title, 
-                book_language, 
-                voice_style, 
-                book_index,
-                driver=self.driver,
-                chat_manager=self.chat_manager
-            )
-    
-            # Log del risultato
-            self.add_log(f"Risultato generazione legacy: {result}")
-        
-        except Exception as e:
-            self.add_log(f"❌ Errore durante la generazione del libro: {str(e)}")
-            import traceback
-            self.add_log(traceback.format_exc())
-        
-        return self.chat_manager.get_log_history_string()
-
     
     def split_prompt(self, text, prompt_id=None, section_number=None):
         """
@@ -5406,36 +3745,6 @@ class AIBookBuilder:
             self.add_log(traceback.format_exc())
             return f"❌ Errore: {str(e)}"
 
-    
-
-    def generate_book(self, book_title, book_language, voice_style, book_index):
-        """
-        Genera il libro utilizzando i dati dell'interfaccia e i dati CRISP disponibili.
-        Ora delega alla funzione nel modulo framework/book_generator.py
-        """
-        from framework.book_generator import generate_book as generate_book_func
-        from ai_interfaces.genspark_driver import send_to_genspark
-    
-        # Ottieni il tipo di libro (se disponibile)
-        book_type = None
-        if hasattr(self, 'book_type_hidden'):
-            book_type = self.book_type_hidden.value
-    
-        # Delega la generazione alla funzione nel modulo book_generator
-        result = generate_book_func(
-            book_title=book_title,
-            book_language=book_language,
-            voice_style=voice_style,
-            book_index=book_index,
-            driver=self.driver,
-            chat_manager=self.chat_manager,
-            current_analysis=self.current_analysis,
-            book_type_hidden=book_type,
-            send_to_genspark=send_to_genspark
-        )
-    
-        self.add_log(f"Risultato generazione libro: {result}")
-        return self.chat_manager.get_log_history_string()
 
     def _parse_book_index(self, book_index):
         """
@@ -5518,6 +3827,8 @@ class AIBookBuilder:
         import os
         from datetime import datetime
         import webbrowser
+
+        formatted_html = None
     
         self.add_log("Caricamento dei risultati dell'analisi...")
     
@@ -5525,8 +3836,8 @@ class AIBookBuilder:
         try:
             # Cattura l'HTML formattato direttamente da Genspark
             if self.driver:
-                self.add_log("Tentativo di cattura HTML direttamente da Genspark...")
-                formatted_html = self.capture_formatted_response(self.driver)
+                self.add_log("Tentativo di cattura HTML migliorata direttamente da Genspark...")
+                html_file = self.save_complete_html_improved()
             
                 if formatted_html:
                     self.add_log(f"✅ HTML catturato con successo: {len(formatted_html)} caratteri")
@@ -5541,11 +3852,17 @@ class AIBookBuilder:
                     os.makedirs("output/genspark_formatted", exist_ok=True)
                 
                     # Salva il file con un nome descrittivo
-                    html_path = f"output/genspark_formatted/{keyword}_genspark_{timestamp}.html"
-                    with open(html_path, "w", encoding="utf-8") as f:
-                        f.write(formatted_html)
-                    file_size = os.path.getsize(html_path)
-                    self.add_log(f"💾 File HTML salvato: {html_path} ({file_size} bytes)")
+                    html_path, file_size = self.save_enhanced_html(formatted_html, keyword, timestamp)
+                    self.add_log(f"💾 File HTML migliorato salvato: {html_path} ({file_size} bytes)")
+
+                    # Sistema di debug automatico con percorso assoluto completo
+                    abs_path = os.path.abspath(html_path)
+                    self.add_log(f"📋 Percorso completo: {abs_path}")
+                    self.add_log(f"🔗 URL file: file://{abs_path.replace(os.sep, '/')}")
+
+                    # Salva il percorso in una variabile di classe per riferimento futuro
+                    self.last_html_path = abs_path
+
                 
                     # Aggiorna anche il file "current"
                     current_path = f"output/genspark_formatted/{keyword}_genspark_current.html"
@@ -5593,14 +3910,15 @@ class AIBookBuilder:
                     # Apri automaticamente nel browser (opzionale)
                     try:
                         self.add_log("🌐 Tentativo di apertura nel browser...")
-                        webbrowser.open(f"file://{os.path.abspath(html_path)}")
+                        file_path = os.path.abspath(html_file).replace('\\', '/')
+                        webbrowser.open("file:///" + file_path)
                         self.add_log("✅ File aperto nel browser")
                     except Exception as browser_error:
                         self.add_log(f"⚠️ Impossibile aprire nel browser: {str(browser_error)}")
                 
                     # Prova a ritornare qui per evitare che il codice successivo sovrascriva il componente
-                    self.add_log("📍 Completamento precoce della funzione - ritorno ai chiamanti")
-                    return self.chat_manager.get_log_history_string()
+                    # self.add_log("📍 Completamento precoce della funzione - ritorno ai chiamanti")
+                    # return self.chat_manager.get_log_history_string()
                 else:
                     self.add_log("⚠️ Cattura HTML fallita: formatted_html è None o vuoto")
         except Exception as e:
@@ -5649,16 +3967,16 @@ class AIBookBuilder:
                 # Eventuale codice per caricare l'analisi specifica
 
             try:
-                # Aggiungi qui il codice per creare un nuovo file HTML per l'analisi corrente
+                # Cerca il file di contesto per la keyword corrente
                 current_keyword = self.get_current_keyword()
                 if current_keyword:
-                    self.add_log(f"🔍 Keyword corrente identificata: {current_keyword}")
-            
+                    self.add_log(f"🔍 Keyword corrente identificata: '{current_keyword}'")
+        
                     # Verifica nei file di backup per confermare la keyword più recente
                     backup_dir = "backups"
                     if os.path.exists(backup_dir):
                         backup_files = [f for f in os.listdir(backup_dir) 
-                                        if f.startswith("context_") and f.endswith(".txt")]
+                                       if f.startswith("context_") and f.endswith(".txt")]
                         if backup_files:
                             # Ordina per data di modifica (più recente prima)
                             backup_files = sorted(backup_files, 
@@ -5674,36 +3992,157 @@ class AIBookBuilder:
                                     if confirmed_keyword != current_keyword:
                                         self.add_log(f"⚠️ Correzione keyword: da '{current_keyword}' a '{confirmed_keyword}'")
                                         current_keyword = confirmed_keyword
+        
+                    # Nome file basato sulla keyword
+                    safe_keyword = re.sub(r'[\\/*?:"<>|]', "", current_keyword).replace(" ", "_")[:30]
+                    context_file = f"context_{safe_keyword}.txt"
+        
+                    # Se non esiste file specifico, usa quello generico
+                    if not os.path.exists(context_file):
+                        context_file = "context.txt"
             
-                    # Ottenere altre informazioni necessarie
-                    market = self.get_current_market() if hasattr(self, 'get_current_market') else "Unknown"
-                    book_type = self.get_current_book_type() if hasattr(self, 'get_current_book_type') else "Unknown"
-                    language = self.get_current_language() if hasattr(self, 'get_current_language') else "it"
-        
-                    # Chiamare la funzione di formattazione HTML
-                    self.add_log(f"📊 Generazione HTML formattato per l'analisi di {current_keyword}...")
-        
-                    # Creare un context dictionary se necessario
-                    context_data = self.extract_context_data() if hasattr(self, 'extract_context_data') else None
-        
-                    # Chiamare formato_analysis_results_html con tutti i parametri necessari
-                    formatted_html = self.format_analysis_results_html(
-                        keyword=current_keyword,
-                        market=market,
-                        book_type=book_type,
-                        language=language,
-                        context=context_data
-                    )
-        
-                    self.add_log(f"✅ HTML formattato generato: {len(formatted_html) if formatted_html else 0} caratteri")
-                else:
-                    self.add_log("⚠️ Impossibile determinare la keyword corrente per la formattazione HTML")
-            except Exception as format_error:
-                self.add_log(f"❌ Errore nella formattazione HTML: {str(format_error)}")
-                import traceback
-                self.add_log(traceback.format_exc())
+                    if os.path.exists(context_file):
+                        with open(context_file, "r", encoding="utf-8") as f:
+                            context_content = f.read()
+                
+                        # Genera e salva l'HTML usando il nostro nuovo metodo
+                        formatted_html, html_path = self.format_and_save_analysis_html(current_keyword, context_content)
+            
+                        if formatted_html and html_path:
 
-            # IL RESTO DEL CODICE ORIGINALE CONTINUA QUI
+                            # Aggiornamento con formattazione migliorata
+                            if hasattr(self, 'results_display'):
+                                visible_html = f"""
+                                <div id='analysis-results-container' 
+                                     style='min-height: 500px; 
+                                            background-color: white;
+                                            border: 1px solid #e5e7eb;
+                                            border-radius: 8px;
+                                            padding: 20px;
+                                            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                                            position: relative;
+                                            z-index: 10;'>
+                                    <h2 style='color: #2563eb; margin-bottom: 15px;'>Risultati dell'Analisi</h2>
+                                    {formatted_html}
+                                </div>
+                                """
+                                # Usa il metodo update se disponibile, altrimenti assegna direttamente
+                                if hasattr(self.results_display, 'update'):
+                                    self.results_display.update(value=visible_html, visible=True)
+                                    self.add_log("✅ Risultati visualizzati tramite update")
+                                else:
+                                    self.results_display.value = visible_html
+                                    self.add_log("✅ Risultati visualizzati tramite assegnazione diretta")
+                    
+                            # Aggiorna lo stato dell'analisi
+                            if hasattr(self, 'analysis_status'):
+                                self.analysis_status.value = "**Stato analisi**: Completata e visualizzata ✅"
+                    
+                            # Apri automaticamente nel browser
+                            try:
+                                file_path = os.path.abspath(html_file).replace('\\', '/')
+                                webbrowser.open("file:///" + file_path)
+                                self.add_log("✅ File aperto nel browser")
+                            except Exception as browser_error:
+                                self.add_log(f"⚠️ Impossibile aprire nel browser: {str(browser_error)}")
+                    
+                            # Pulizia dei file temporanei prima di uscire
+                            try:
+                                for temp_file in temp_files_created:
+                                    if os.path.exists(temp_file) and temp_file != "context.txt":  # Non rimuovere il file principale
+                                        os.remove(temp_file)
+                                        self.add_log(f"🧹 File temporaneo {temp_file} rimosso")
+                            except Exception as cleanup_error:
+                                self.add_log(f"⚠️ Errore nella pulizia dei file temporanei: {str(cleanup_error)}")
+                    
+                            # Terminazione precoce
+                            return self.chat_manager.get_log_history_string()
+                    else:
+                        self.add_log(f"⚠️ File di contesto non trovato: {context_file}")
+            
+                        # PIANO B: usa ancora format_analysis_results_html con i parametri disponibili
+                        try:
+                            market = self.get_current_market() if hasattr(self, 'get_current_market') else "Unknown"
+                            book_type = self.get_current_book_type() if hasattr(self, 'get_current_book_type') else "Unknown"
+                            language = self.get_current_language() if hasattr(self, 'get_current_language') else "it"
+                            context_data = self.extract_context_data() if hasattr(self, 'extract_context_data') else None
+    
+                            self.add_log(f"📊 Tentativo di generazione HTML con format_analysis_results_html...")
+    
+                            # Chiamare format_analysis_results_html con tutti i parametri necessari
+                            formatted_html = self.format_analysis_results_html(
+                                keyword=current_keyword,
+                                market=market,
+                                book_type=book_type,
+                                language=language,
+                                context=context_data
+                            )
+    
+                            if formatted_html:
+                                self.add_log(f"✅ HTML formattato generato (Piano B): {len(formatted_html)} caratteri")
+        
+                                # Aggiorna l'interfaccia con formattazione migliorata
+                                if hasattr(self, 'results_display'):
+                                    # Prepara HTML con formattazione visibile
+                                    visible_html = f"""
+                                    <div id='analysis-results-container' 
+                                         style='min-height: 500px; 
+                                                background-color: white;
+                                                border: 1px solid #e5e7eb;
+                                                border-radius: 8px;
+                                                padding: 20px;
+                                                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                                                position: relative;
+                                                z-index: 10;'>
+                                        <h2 style='color: #2563eb; margin-bottom: 15px;'>Risultati dell'Analisi (Piano B)</h2>
+                                        {formatted_html}
+                                    </div>
+                                    """
+            
+                                    # Usa il metodo update se disponibile, altrimenti assegna direttamente
+                                    if hasattr(self.results_display, 'update'):
+                                        self.results_display.update(value=visible_html, visible=True)
+                                        self.add_log("✅ Risultati visualizzati tramite update (Piano B)")
+                                    else:
+                                        self.results_display.value = visible_html
+                                        self.add_log("✅ Risultati visualizzati tramite assegnazione diretta (Piano B)")
+                
+                                    # Aggiorna lo stato dell'analisi
+                                    if hasattr(self, 'analysis_status'):
+                                        self.analysis_status.value = "**Stato analisi**: Completata e visualizzata ✅"
+            
+                                    # Aggiungi questo log per debug
+                                    self.add_log(f"DEBUG Piano B: results_display ID={id(self.results_display)}, tipo={type(self.results_display)}")
+            
+                                    # Non terminare precocemente con return
+                                    # return self.chat_manager.get_log_history_string()
+                                else:
+                                    self.add_log("❌ results_display non trovato (Piano B)")
+                        except Exception as format_error_b:
+                            self.add_log(f"❌ Piano B fallito: {str(format_error_b)}")
+                            import traceback
+                            self.add_log(traceback.format_exc())
+
+            except Exception as primary_error:
+                # Gestione errori per il primo approccio
+                self.add_log(f"⚠️ Il metodo principale ha generato un errore: {str(primary_error)}")
+                import traceback
+                self.add_log(f"TRACEBACK primo metodo: {traceback.format_exc()}")
+    
+                # Pulizia dei file temporanei se necessario
+                try:
+                    for temp_file in temp_files_created:
+                        if os.path.exists(temp_file) and temp_file != "context.txt":
+                            os.remove(temp_file)
+                            self.add_log(f"🧹 File temporaneo {temp_file} rimosso (dopo errore primo metodo)")
+                except Exception as cleanup_error:
+                    self.add_log(f"⚠️ Errore nella pulizia dopo primo metodo: {str(cleanup_error)}")
+    
+                # FALLBACK: Prova con il secondo approccio
+                self.add_log("ℹ️ Il metodo principale e il Piano B hanno fallito. Tentativo con il metodo alternativo...")
+
+            # Se siamo qui, significa che né l'approccio principale né il Piano B hanno avuto successo
+            # Continua con il secondo blocco principale (fallback finale)
         
             try:
                 # Cerca prima i file HTML nella cartella output/analisi_html (percorso corretto)
@@ -5886,6 +4325,14 @@ class AIBookBuilder:
                     f.write(html)
                 self.add_log(f"HTML di debug salvato: {debug_html_filename} ({len(html)} bytes)")
 
+                # Sistema di debug automatico con percorso assoluto completo
+                abs_debug_path = os.path.abspath(debug_html_filename)
+                self.add_log(f"📋 Percorso completo debug: {abs_debug_path}")
+                self.add_log(f"🔗 URL file debug: file://{abs_debug_path.replace(os.sep, '/')}")
+
+                # Salva il percorso in una variabile di classe per riferimento futuro
+                self.last_debug_html_path = abs_debug_path
+
                 # NUOVO: Salva anche in output/analisi_html come file regolare
                 try:
                     current_keyword = self.get_current_keyword()
@@ -5896,6 +4343,18 @@ class AIBookBuilder:
                         self.add_log(f"✅ Salvato anche come HTML formattato in {file_path}")
                 except Exception as e:
                     self.add_log(f"❌ Errore nel salvataggio aggiuntivo: {str(e)}")
+
+                # Sistema di debug automatico per il file HTML formattato
+                try:
+                    if 'file_path' in locals() and file_path:
+                        abs_formatted_path = os.path.abspath(file_path)
+                        self.add_log(f"📋 Percorso completo HTML formattato: {abs_formatted_path}")
+                        self.add_log(f"🔗 URL file formattato: file://{abs_formatted_path.replace(os.sep, '/')}")
+                
+                        # Salva il percorso in una variabile di classe
+                        self.last_formatted_html_path = abs_formatted_path
+                except Exception as path_error:
+                        self.add_log(f"⚠️ Errore nel logging del percorso formattato: {str(path_error)}")                        
     
                 # IMPORTANTE: Verifica che results_display esista e sia diverso da analysis_status
                 if hasattr(self, 'results_display'):
@@ -5949,6 +4408,286 @@ class AIBookBuilder:
                 import traceback
                 self.add_log(traceback.format_exc())
                 return self.chat_manager.get_log_history_string()
+
+    def save_enhanced_html(self, html_content, keyword, timestamp=None):
+        """
+        Salva una versione migliorata del file HTML con CSS completi.
+        """
+        import os
+        from datetime import datetime
+    
+        if timestamp is None:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+        # Crea directory se non esiste
+        os.makedirs("output/genspark_formatted", exist_ok=True)
+    
+        # Aggiungi CSS avanzati per tabelle, liste, etc.
+        enhanced_html = f"""<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Analisi {keyword} - {timestamp}</title>
+            <style>
+                /* Stili base */
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+            
+                /* Stili per intestazioni */
+                h1 {{ font-size: 28px; margin-bottom: 20px; color: #1a56db; }}
+                h2 {{ font-size: 24px; margin-top: 30px; margin-bottom: 15px; color: #1e429f; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }}
+                h3 {{ font-size: 20px; margin-top: 25px; margin-bottom: 12px; color: #233876; }}
+                h4 {{ font-size: 18px; margin-top: 20px; color: #374151; }}
+            
+                /* Stili per testo */
+                p {{ margin-bottom: 16px; }}
+                strong, b {{ font-weight: 600; color: #111827; }}
+            
+                /* Stili per tabelle */
+                table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 20px 0;
+                    font-size: 15px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    border-radius: 6px;
+                    overflow: hidden;
+                }}
+            
+                table thead {{
+                    background-color: #f3f4f6;
+                }}
+            
+                table th {{
+                    padding: 12px 15px;
+                    text-align: left;
+                    font-weight: 600;
+                    color: #111827;
+                    border-bottom: 2px solid #d1d5db;
+                }}
+            
+                table td {{
+                    padding: 10px 15px;
+                    border-bottom: 1px solid #e5e7eb;
+                }}
+            
+                table tbody tr:nth-child(even) {{
+                    background-color: #f9fafb;
+                }}
+            
+                table tbody tr:hover {{
+                    background-color: #f3f4f6;
+                }}
+            
+                /* Stili per liste */
+                ul, ol {{
+                    margin-bottom: 16px;
+                    padding-left: 25px;
+                }}
+            
+                ul li, ol li {{
+                    margin-bottom: 8px;
+                }}
+            
+                ul {{
+                    list-style-type: disc;
+                }}
+            
+                ul ul {{
+                    list-style-type: circle;
+                }}
+            
+                /* Stili per codice */
+                pre {{
+                    background-color: #f3f4f6;
+                    padding: 15px;
+                    border-radius: 6px;
+                    overflow-x: auto;
+                    font-family: monospace;
+                    margin: 20px 0;
+                    border: 1px solid #e5e7eb;
+                }}
+            
+                code {{
+                    background-color: #f3f4f6;
+                    padding: 2px 5px;
+                    border-radius: 4px;
+                    font-family: monospace;
+                    font-size: 0.9em;
+                    color: #3b82f6;
+                }}
+            
+                /* Stili per citazioni */
+                blockquote {{
+                    border-left: 4px solid #3b82f6;
+                    padding: 10px 20px;
+                    margin: 20px 0;
+                    background-color: #f3f4f6;
+                    color: #4b5563;
+                    font-style: italic;
+                }}
+            
+                /* Stili per separatori */
+                hr {{
+                    border: none;
+                    border-top: 2px solid #e5e7eb;
+                    margin: 30px 0;
+                }}
+            
+                /* Stili per note e avvisi */
+                .note {{
+                    background-color: #eff6ff;
+                    border-left: 4px solid #3b82f6;
+                    padding: 15px;
+                    margin: 20px 0;
+                    border-radius: 6px;
+                }}
+            
+                .warning {{
+                    background-color: #fef2f2;
+                    border-left: 4px solid #ef4444;
+                    padding: 15px;
+                    margin: 20px 0;
+                    border-radius: 6px;
+                }}
+            
+                .tip {{
+                    background-color: #f0fdf4;
+                    border-left: 4px solid #10b981;
+                    padding: 15px;
+                    margin: 20px 0;
+                    border-radius: 6px;
+                }}
+            
+                /* Stili per immagini */
+                img {{
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: 6px;
+                    margin: 20px 0;
+                }}
+            
+                /* Stile per sezioni */
+                .section {{
+                    background-color: #ffffff;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin-bottom: 30px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    border: 1px solid #e5e7eb;
+                }}
+            
+                /* Stile per metadata */
+                .metadata {{
+                    font-size: 14px;
+                    color: #6b7280;
+                    margin-bottom: 30px;
+                    padding: 10px;
+                    background-color: #f9fafb;
+                    border-radius: 6px;
+                }}
+            
+                /* Stili per responsive */
+                @media screen and (max-width: 768px) {{
+                    body {{
+                        padding: 15px;
+                    }}
+                
+                    table {{
+                        font-size: 14px;
+                    }}
+                
+                    table td, table th {{
+                        padding: 8px 10px;
+                    }}
+                }}
+            
+                /* Classi aggiuntive per le tabelle migliorate */
+                .enhanced-table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 20px 0;
+                }}
+            
+                .even-row {{
+                    background-color: #f9fafb;
+                }}
+            
+                .odd-row {{
+                    background-color: #ffffff;
+                }}
+            </style>
+        
+            <!-- INSERIRE LO SCRIPT QUI -->
+            <script>
+                // Script per migliorare le tabelle nell'HTML
+                function enhanceTables() {{
+                    document.querySelectorAll('table').forEach(table => {{
+                        // Aggiungi classe per lo styling
+                        table.classList.add('enhanced-table');
+                    
+                        // Forza il bordo se non esistente
+                        if (!table.hasAttribute('border') || table.getAttribute('border') === '0') {{
+                            table.setAttribute('border', '1');
+                        }}
+                    
+                        // Assicurati che la prima riga sia un header
+                        const firstRow = table.querySelector('tr');
+                        if (firstRow) {{
+                            const cells = Array.from(firstRow.children);
+                            if (cells.length > 0) {{
+                                cells.forEach(cell => {{
+                                    if (cell.tagName !== 'TH') {{
+                                        // Converti TD a TH per la prima riga
+                                        const th = document.createElement('th');
+                                        th.innerHTML = cell.innerHTML;
+                                        cell.parentNode.replaceChild(th, cell);
+                                    }}
+                                }});
+                            }}
+                        }}
+                    
+                        // Aggiungi classi zebra-stripe per migliorare la leggibilità
+                        const rows = Array.from(table.querySelectorAll('tr')).slice(1); // Skip header
+                        rows.forEach((row, index) => {{
+                            row.classList.add(index % 2 === 0 ? 'even-row' : 'odd-row');
+                        }});
+                    }});
+                }}
+            
+                // Esegui lo script quando la pagina è caricata
+                document.addEventListener('DOMContentLoaded', enhanceTables);
+            </script>
+        </head>
+        <body>
+            <div class="metadata">
+                <strong>Parola chiave:</strong> {keyword}<br>
+                <strong>Data analisi:</strong> {timestamp[:4]}/{timestamp[4:6]}/{timestamp[6:8]} {timestamp[9:11]}:{timestamp[11:13]}<br>
+                <strong>Esportazione:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            </div>
+        
+            {html_content}
+        </body>
+        </html>
+        """
+    
+        # Salva il file con un nome descrittivo
+        html_path = f"output/genspark_formatted/{keyword}_genspark_{timestamp}.html"
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(enhanced_html)
+    
+        # Salva anche una versione "current" per facilità di accesso
+        current_path = f"output/genspark_formatted/{keyword}_genspark_current.html"
+        with open(current_path, "w", encoding="utf-8") as f:
+            f.write(enhanced_html)
+    
+        return html_path, os.path.getsize(html_path)
 
     def export_to_docx(self):
         """Esporta l'analisi corrente in un documento DOCX."""
@@ -6122,50 +4861,191 @@ class AIBookBuilder:
         return self.chat_manager.get_log_history_string()
 
     def load_saved_analyses_list(self):
-            """Carica l'elenco delle analisi salvate"""
-            saved_analyses = []
-            try:
-                # Cerca i file context_*.txt nella directory corrente
-                for file in os.listdir():
-                    match = re.match(r'context_(.+)\.txt', file)
-                    if match:
-                        keyword = match.group(1).replace('_', ' ')
-                        saved_analyses.append(keyword)
-                    
-                return saved_analyses
-            except Exception as e:
-                self.add_log(f"Errore nel caricamento delle analisi salvate: {str(e)}")
-                return []
+        """
+        Carica la lista delle analisi salvate come file HTML
+        """
+        import os
+        import re
+        from datetime import datetime
     
-    def load_saved_analysis(self, keyword):
-        """Carica un'analisi salvata"""
+        # Lista per i percorsi dei file (valori del dropdown)
+        file_paths = []
+        # Lista per le etichette da mostrare (chiavi del dropdown)
+        display_labels = []
+    
+        # Directory per i file HTML
+        html_dir = os.path.join("output", "genspark_formatted")
+    
+        # Verifica se la directory esiste
+        if not os.path.exists(html_dir):
+            self.add_log(f"⚠️ Directory {html_dir} non trovata")
+            return []
+    
         try:
-            # Converti la keyword in nome file
-            file_keyword = keyword.replace(' ', '_')
-            context_file = f"context_{file_keyword}.txt"
+            # Trova tutti i file HTML nella directory
+            html_files = [f for f in os.listdir(html_dir) if f.endswith(".html") and not f.endswith("_current.html")]
         
-            if not os.path.exists(context_file):
-                self.add_log(f"❌ Analisi per '{keyword}' non trovata!")
-                return self.chat_manager.get_log_history_string()
+            # Struttura per tenere traccia dei file con le loro date
+            file_info = []
+        
+            # Estrai le keyword e la data dai nomi dei file e usa la data di modifica come backup
+            pattern = r"([^_]+)_genspark_(\d{8}_\d{6})\.html"
+        
+            for file in html_files:
+                file_path = os.path.join(html_dir, file)
+                file_mtime = os.path.getmtime(file_path)  # Timestamp di modifica
             
-            # Leggi il file
-            with open(context_file, "r", encoding="utf-8") as f:
-                content = f.read()
-              
-            # Imposta come analisi corrente
-            self.current_analysis = {"KEYWORD": keyword}
-          
-            # Aggiorna l'interfaccia
-            self.add_log(f"✅ Analisi per '{keyword}' caricata con successo")
+                # Prova prima con il pattern nel nome file
+                match = re.match(pattern, file)
+                if match:
+                    keyword = match.group(1).replace("_", " ")
+                    timestamp_str = match.group(2)
+                
+                    try:
+                        # Converti il timestamp dal nome file in oggetto datetime
+                        date_obj = datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S")
+                        date_str = date_obj.strftime("%d/%m/%Y %H:%M")
+                        timestamp = date_obj.timestamp()  # Converti in timestamp per ordinamento
+                    except ValueError:
+                        # Se la conversione fallisce, usa la data di modifica
+                        date_str = datetime.fromtimestamp(file_mtime).strftime("%d/%m/%Y %H:%M")
+                        timestamp = file_mtime
+                else:
+                    # Se non corrisponde al pattern, usa il nome file come keyword
+                    # e la data di modifica
+                    keyword = file.replace(".html", "")
+                    date_str = datetime.fromtimestamp(file_mtime).strftime("%d/%m/%Y %H:%M")
+                    timestamp = file_mtime
             
-            # Carica i risultati nell'interfaccia
-            self.load_analysis_results(context_file)
+                # Salva le informazioni
+                display_text = f"{keyword} ({date_str})"
+                file_info.append((display_text, file_path, timestamp))
+        
+            # Ordina per timestamp (data) in ordine decrescente (più recenti prima)
+            file_info.sort(key=lambda x: x[2], reverse=True)
+        
+            # Crea le liste ordinate
+            for display_text, file_path, _ in file_info:
+                display_labels.append(display_text)
+                file_paths.append(file_path)
+        
+            # Crea una lista di coppie (etichetta, valore)
+            choices = list(zip(display_labels, file_paths))
+        
+            self.add_log(f"✅ Trovate {len(choices)} analisi HTML salvate")
+            return choices
+    
+        except Exception as e:
+            self.add_log(f"❌ Errore nel caricamento delle analisi HTML: {str(e)}")
+            import traceback
+            self.add_log(traceback.format_exc())
+            return []
+    
+    def load_selected_analysis(self, selected_option):
+        """
+        Carica l'analisi selezionata dal dropdown
+        """
+        # Verifica il tipo di dato ricevuto
+        self.add_log(f"DEBUG: Tipo di dato selezionato: {type(selected_option)}")
+        self.add_log(f"DEBUG: Valore selezionato: {selected_option}")
+    
+        # Gestisci il caso in cui selected_option è un dizionario
+        if isinstance(selected_option, dict):
+            if 'value' in selected_option:
+                file_path = selected_option['value']
+            else:
+                self.add_log("⚠️ Formato dizionario non valido (manca 'value')")
+                return "Errore: formato selezione non valido"
+        else:
+            file_path = selected_option
+    
+        if not file_path:
+            self.add_log("⚠️ Nessun file selezionato")
+            return "Nessun file selezionato"
+    
+        try:
+            if os.path.exists(file_path):
+                self.add_log(f"📂 Caricamento del file HTML: {file_path}")
             
-            return self.chat_manager.get_log_history_string()
+                # Leggi il contenuto del file HTML
+                with open(file_path, "r", encoding="utf-8") as f:
+                    html_content = f.read()
+            
+                # Estrai il nome del file per il titolo
+                file_name = os.path.basename(file_path)
+                keyword = file_name.split('_genspark_')[0].replace('_', ' ') if '_genspark_' in file_name else file_name
+            
+                # Crea un container HTML con iframe per isolare il contenuto
+                container_html = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                    /* Container esterno che mantiene layout fissato */
+                    .fixed-container {{
+                        width: 100%;
+                        min-height: 600px;
+                        padding: 0;
+                        margin: 0;
+                        box-sizing: border-box;
+                        overflow: visible;
+                        background: white;
+                    }}
+                
+                    /* Header con informazioni sul file */
+                    .file-header {{
+                        background-color: #2563eb;
+                        color: white;
+                        padding: 10px 15px;
+                        border-radius: 5px 5px 0 0;
+                        font-size: 16px;
+                        font-weight: bold;
+                    }}
+                
+                    /* iframe per isolare il contenuto HTML */
+                    .content-iframe {{
+                        width: 100%;
+                        height: 800px;
+                        border: 1px solid #e5e7eb;
+                        border-top: none;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }}
+                    </style>
+                </head>
+                <body>
+                    <div class="fixed-container">
+                        <div class="file-header">Analisi: {keyword}</div>
+                        <iframe class="content-iframe" srcdoc="{html_content.replace('"', '&quot;')}" frameborder="0"></iframe>
+                    </div>
+                </body>
+                </html>
+                """
+            
+                # Aggiorna il componente di visualizzazione
+                if hasattr(self, 'results_display'):
+                    # Usa il metodo update se disponibile
+                    if hasattr(self.results_display, 'update'):
+                        self.results_display.update(value=container_html, visible=True)
+                        self.add_log(f"✅ Componente aggiornato tramite metodo update")
+                    else:
+                        # Altrimenti, assegna direttamente il valore
+                        self.results_display.value = container_html
+                        self.add_log(f"✅ Componente aggiornato tramite assegnazione diretta")
+                
+                    self.add_log("✅ Analisi HTML caricata nell'interfaccia")
+                    return "Analisi caricata con successo", container_html
+                else:
+                    self.add_log("❌ Componente results_display non trovato")
+                    return "Errore: componente di visualizzazione non trovato", ""
+            else:
+                self.add_log(f"❌ File non trovato: {file_path}")
+                return f"Errore: file non trovato: {file_path}", ""
             
         except Exception as e:
-            self.add_log(f"Errore nel caricamento dell'analisi: {str(e)}")
-            return self.chat_manager.get_log_history_string()
+            self.add_log(f"❌ Errore nel caricamento dell'analisi: {str(e)}")
+            import traceback
+            self.add_log(traceback.format_exc())
+            return f"Errore: {str(e)}", ""
 
     def get_current_keyword(self):
         """Recupera la keyword corrente dall'ultima analisi eseguita"""
@@ -6343,8 +5223,118 @@ class AIBookBuilder:
         return context_data
 
     def create_interface(self):
+        with gr.Blocks(css="""
+            /* Layout a griglia di base */
+            .main-container {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                width: 100% !important;
+            }
+        
+            /* Colonna input (sinistra) - aumentata da 20% a 25% */
+            .input-column {
+                width: 25% !important;
+                min-width: 220px !important;
+                flex: 0 0 auto !important;
+                padding-right: 15px;
+                box-sizing: border-box;
+            }
+        
+            /* Colonna output (destra) - ridotta da 80% a 75% */
+            .output-column {
+                width: 75% !important;
+                flex: 1 1 auto !important;
+                padding-left: 15px;
+                box-sizing: border-box;
+            }
+        
+            /* Contenitore per la lista delle analisi con scrollbar */
+            .scrollable-analyses {
+                max-height: 250px;
+                overflow-y: auto !important;
+                border: 1px solid #e5e7eb;
+                border-radius: 4px;
+                padding: 5px;
+                margin-bottom: 10px;
+                background-color: white;
+            }
 
-        with gr.Blocks(title="PubliScript 2.0", theme="soft") as interface:
+            /* CSS per forzare la scrollbar nel dropdown */
+            /* Selettori specifici per cercare di catturare il menu del dropdown */
+            .dropdown-with-scroll div[role="listbox"],
+            .dropdown-with-scroll ul.options,
+            .dropdown-with-scroll .wrap-inner .options-list,
+            .dropdown-with-scroll .wrap > ul,
+            .gradio-dropdown .wrap > div > ul,
+            .gradio-dropdown [role="listbox"],
+            .gradio-dropdown .options {
+                max-height: 250px !important;
+                overflow-y: auto !important;
+            }            
+        
+            /* Stile per le opzioni radio nella lista scrollabile */
+            .scrollable-analyses .wrap label {
+                padding: 8px 5px;
+                margin: 2px 0;
+                border-bottom: 1px solid #f0f0f0;
+                display: block;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                cursor: pointer;
+            }
+        
+            .scrollable-analyses .wrap label:hover {
+                background-color: #f0f7ff;
+            }
+        
+            /* Stile della scrollbar */
+            .scrollable-analyses::-webkit-scrollbar {
+                width: 6px;
+            }
+        
+            .scrollable-analyses::-webkit-scrollbar-track {
+                background: #f1f1f1; 
+                border-radius: 10px;
+            }
+        
+            .scrollable-analyses::-webkit-scrollbar-thumb {
+                background: #888;
+                border-radius: 10px;
+            }
+        
+            .scrollable-analyses::-webkit-scrollbar-thumb:hover {
+                background: #555;
+            }
+        
+            /* Resto dei tuoi stili */
+            .results-container {
+                width: 100% !important;
+                margin: 0 !important;
+            }
+        
+            #results_display_main {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+        
+            /* Stili per blocchi di stato e pulsanti */
+            .status-text {
+                margin: 10px 0;
+                padding: 8px;
+                background-color: #f3f4f6;
+                border-radius: 4px;
+                font-size: 0.9em;
+            }
+        
+            /* Migliora l'aspetto dei pulsanti di esportazione */
+            .input-column .row button {
+                flex-grow: 1;
+                text-align: center;
+            }
+        """) as interface:
+
             # Header principale
             with gr.Row(elem_classes=["header-container"]):
                 gr.HTML("""
@@ -6356,6 +5346,7 @@ class AIBookBuilder:
                         <div class="app-subtitle">Sistema Multi-Agente per Analisi e Generazione di Libri</div>
                     </div>
                 """)
+
             self.crisp_phase_checkboxes = {}
             self.legacy_phase_checkboxes = {}
             # Sistema di tabs principale
@@ -6391,56 +5382,70 @@ class AIBookBuilder:
             
                 # Tab 2: Analisi di Mercato
                 with gr.TabItem("2️⃣ Analisi di Mercato", elem_classes=["tab-content"]):
-                    with gr.Row():
-                        # Colonna sinistra: Input (1/3)
+                    with gr.Row(elem_classes=["main-container"]):
+                        # Colonna sinistra: Input (modificata da 1/5 a 1/4)
                         with gr.Column(scale=1, elem_classes=["input-column"]):
                             gr.Markdown("### Informazioni Base")
-            
-                            # Nuovo controllo per caricare analisi esistente
+
+                            # Dropdown per caricare analisi esistente
+                            load_analysis_dropdown = gr.Dropdown(
+                                choices=self.load_saved_analyses_list(),
+                                label="Carica Analisi Esistente",
+                                interactive=True,
+                                elem_classes=["dropdown-with-scroll", "dropdown-input"],
+                                type="value"
+                            )
+    
+                            # Pulsanti per caricare e aggiornare
                             with gr.Row():
-                                load_analysis_dropdown = gr.Dropdown(
-                                    choices=self.load_saved_analyses_list(),
-                                    label="Carica Analisi Esistente",
-                                    interactive=True,
-                                    elem_classes=["dropdown-input"]
-                                )
-                                load_analysis_btn = gr.Button("📂 Carica", variant="secondary")
-            
+                                load_analysis_btn = gr.Button("📂 Carica Analisi", variant="secondary")
+                                refresh_list_btn = gr.Button("🔄", variant="secondary", size="sm")
+
+                            # SPOSTATO: Stato analisi
+                            analysis_status = gr.Markdown("**Stato analisi**: Non iniziata", elem_classes=["status-text"])
+
+                            # SPOSTATO: Pulsanti di esportazione
+                            gr.Markdown("### Esporta Risultati")
+                            with gr.Row():
+                                export_docx_btn = gr.Button("📄 Esporta DOCX", variant="secondary", size="sm")
+                                export_pdf_btn = gr.Button("📑 Esporta PDF", variant="secondary", size="sm")
+                            with gr.Row():
+                                export_txt_btn = gr.Button("📝 Esporta TXT", variant="secondary", size="sm")
+    
                             book_type = gr.Dropdown(
                                 choices=self.book_types,
                                 label="Tipo di Libro",
                                 value=self.book_types[0],
                                 elem_classes=["dropdown-input"]
                             )
-            
+    
                             keyword = gr.Textbox(
                                 label="Keyword Principale",
                                 placeholder="Parola chiave principale del libro",
                                 elem_classes=["text-input"]
                             )
-                        
+        
                             language = gr.Dropdown(
                                 choices=["English", "Español", "Français", "Deutsch", "Italiano"],
                                 label="Lingua Output Analisi",
                                 value="Italiano",
                                 elem_classes=["dropdown-input"]
                             )
-                        
+        
                             market = gr.Dropdown(
                                 choices=list(self.markets.keys()),
                                 label="Mercato di Riferimento",
                                 value="USA",
                                 elem_classes=["dropdown-input"]
                             )
-                        
+        
                             # Opzioni avanzate
                             with gr.Accordion("Mostra opzioni avanzate", open=False):
                                 analysis_prompt = gr.TextArea(
                                     label="Prompt di Analisi (opzionale)",
                                     value=self.default_analysis_prompt,
                                     lines=6
-                                )
-                        
+                                )                        
                             #------------------INIZIO CAMBIAMENTO RADIO BUTTON-----------------------
 
                             # Aggiunta dell'Accordion per la selezione delle fasi
@@ -6583,32 +5588,43 @@ class AIBookBuilder:
                             )
                             
                             analyze_btn = gr.Button("🔍 Analizza Mercato", variant="primary", size="lg")
-                            complete_analysis_btn = gr.Button("✅ Completa Analisi", variant="secondary")
-                
+                            transfer_to_book_btn = gr.Button("📚 Prepara Generazione Libro", variant="secondary", size="lg")                        
+                                       
                         # Colonna destra: Output (2/3)
-                        with gr.Column(scale=2, elem_classes=["output-column"]):
+                        with gr.Column(scale=3, elem_classes=["output-column"]):
                             gr.Markdown("### Analisi di Mercato")
                         
-                            # Stato analisi
-                            analysis_status = gr.Markdown("**Stato analisi**: Non iniziata", elem_classes=["status-text"])
-                        
-                            # Pulsanti di esportazione
-                            with gr.Row(elem_classes=["export-buttons"]):
-                                export_docx_btn = gr.Button("📄 Esporta DOCX", variant="secondary")
-                                export_pdf_btn = gr.Button("📑 Esporta PDF", variant="secondary")
-                                export_txt_btn = gr.Button("📝 Esporta TXT", variant="secondary")
-                                debug_btn = gr.Button("🐞 Debug UI", variant="secondary")
-
+                            
                             # Area di output principale (formato HTML per ricchezza)
                             results_display = gr.HTML(
-                                value="<div class='results-placeholder'>I risultati dell'analisi appariranno qui</div>",
-                                elem_classes=["results-container"]
+                                value="""
+                                <div id='analysis-results-container' 
+                                     style='min-height: 500px; 
+                                            width: 100%;
+                                            background-color: white; 
+                                            border: 1px solid #e5e7eb; 
+                                            border-radius: 8px;
+                                            padding: 20px;
+                                            box-shadow: 0 1px 3px rgba(0,0,0,0.1);'>
+                                    <h3 style='color: #2563eb; margin-bottom: 15px;'>I risultati dell'analisi appariranno qui</h3>
+                                    <p>Inserisci i parametri dell'analisi e clicca su "Analizza Mercato" per iniziare.</p>
+                                </div>
+                                """,
+                                elem_classes=["results-container"],
+                                visible=True,
+                                elem_id="results_display_main"  # Aggiungi un ID univoco
                             )
                             self.results_display = results_display
+
+                            # Verifica che results_display e analysis_status siano due componenti distinti
+                            self.add_log(f"DEBUG ID check: results_display={id(self.results_display)}, analysis_status={id(analysis_status)}")
+
+                            # Verifica che results_display e analysis_status siano due componenti distinti
+                            self.add_log(f"DEBUG ID check: results_display={id(self.results_display)}, analysis_status={id(analysis_status)}")
             
                 # Tab 3: Generazione Libro
                 with gr.TabItem("3️⃣ Generazione Libro", elem_classes=["tab-content"]):
-                    with gr.Group(visible=True) as book_details:
+                     with gr.Group(visible=True) as book_details:
                         gr.Markdown("### Dettagli Libro")
 
                         with gr.Row():
@@ -6659,7 +5675,7 @@ class AIBookBuilder:
                                     interactive=True,
                                 )
         
-                                # Titolo e lingua
+                                # Titolo del libro
                                 with gr.Row():
                                     with gr.Column(scale=2):
                                         self.book_title = gr.Textbox(
@@ -6667,7 +5683,9 @@ class AIBookBuilder:
                                             placeholder="Inserisci il titolo",
                                             elem_classes=["text-input"]
                                         )
-            
+                               
+                              
+                                    #Lingua del libro
                                     with gr.Column(scale=1):
                                         self.book_language = gr.Textbox(
                                             label="Lingua del Libro",
@@ -6675,14 +5693,35 @@ class AIBookBuilder:
                                             placeholder="es: English, Italiano, Español",
                                             elem_classes=["text-input"]
                                         )
-        
-                                # Stile di voce
+                                 
+                                # Tono di voce
                                 self.voice_style = gr.Textbox(
                                     label="Tono di Voce",
                                     placeholder="es: Formale, Tecnico, Conversazionale",
                                     value="",
                                     elem_classes=["text-input"]
                                 )
+
+                                # Angolo di attacco
+                                self.editorial_angle = gr.Textbox(
+                                    label="Angolo Editoriale",
+                                    placeholder="Prospettiva/approccio principale del libro",
+                                    elem_classes=["text-input"]
+                                )    
+
+                                # Unique Selling Proposition
+                                self.book_usp = gr.Textbox(
+                                    label="Unique Selling Proposition",
+                                    placeholder="Cosa rende unico questo libro",
+                                    elem_classes=["text-input"]
+                                )
+                
+                                # Checkbox per includere l'analisi di mercato nel contesto
+                                self.include_analysis = gr.Checkbox(
+                                    label="Includi analisi di mercato nel contesto",
+                                    value=True,
+                                    interactive=True,
+                                )                            
     
                                 # Note personalizzate
                                 self.custom_notes = gr.TextArea(
@@ -7159,10 +6198,10 @@ class AIBookBuilder:
             )
     
             # Completa analisi
-            complete_analysis_btn.click(
-                fn=self.complete_analysis,
-                outputs=[self.log_output, analysis_status, tabs, self.book_title, self.book_index, self.voice_style]
-            )
+            # complete_analysis_btn.click(
+            #    fn=self.complete_analysis,
+            #    outputs=[self.log_output, analysis_status, tabs, self.book_title, self.book_index, self.voice_style]
+            # )
     
             # Generazione libro
             generate_btn.click(
@@ -7207,16 +6246,17 @@ class AIBookBuilder:
 
             # Nel metodo create_interface, dopo aver definito load_analysis_btn:
             load_analysis_btn.click(
-                fn=self.load_saved_analysis,
+                fn=self.load_selected_analysis,
                 inputs=[load_analysis_dropdown],
-                outputs=[self.log_output]
+                outputs=[self.log_output, self.results_display]
             )
 
-            debug_btn.click(
-                fn=self.debug_check_components,
-                outputs=[self.log_output]
+            refresh_list_btn.click(
+                fn=self.load_saved_analyses_list, 
+                inputs=[],
+                outputs=[load_analysis_dropdown]
             )
-    
+
             # Debug tools
             take_screenshot_btn.click(
                 fn=lambda: self.take_debug_screenshot("debug"),
@@ -7309,7 +6349,225 @@ class AIBookBuilder:
                 outputs=[gr.Textbox(label="Risultato estrazione")]
             )
 
+            transfer_to_book_btn.click(
+                fn=self.transfer_to_book_tab,
+                inputs=[],
+                outputs=[
+                    self.log_output,
+                    self.book_title,
+                    self.voice_style, 
+                    self.editorial_angle, 
+                    self.book_usp, 
+                    self.book_index
+                ] 
+            )
+            
             return interface
+
+    def format_and_save_analysis_html(self, keyword, context_content):
+        """
+        Formatta e salva il contenuto dell'analisi come file HTML.
+    
+        Args:
+            keyword: Keyword dell'analisi
+            context_content: Il contenuto del file di contesto
+        
+        Returns:
+            tuple: (html_string, html_path)
+        """
+        try:
+            import os
+            from datetime import datetime
+        
+            # Crea la directory output se non esiste
+            os.makedirs("output", exist_ok=True)
+            os.makedirs("output/analisi_html", exist_ok=True)
+        
+            # Timestamp per il nome del file
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+            # Sanitizza la keyword per il nome file
+            safe_keyword = keyword.replace(' ', '_').replace('/', '_').replace('\\', '_')
+        
+            # Estrai le sezioni del contesto
+            import re
+            sections = []
+            section_pattern = r'===\s+([^=]+?)\s+-\s+\d{8}_\d{6}\s+===\n(.*?)(?=\n===|$)'
+            section_matches = re.findall(section_pattern, context_content, re.DOTALL)
+        
+            if section_matches:
+                sections = [(title.strip(), content.strip()) for title, content in section_matches]
+                self.add_log(f"✅ Estratte {len(sections)} sezioni")
+            else:
+                # Fallback: divide per numeri
+                number_pattern = r'(\d+\).*?)(?=\d+\)|$)'
+                number_matches = re.findall(number_pattern, context_content, re.DOTALL)
+            
+                if number_matches:
+                    sections = [(f"Sezione {i+1}", content.strip()) for i, content in enumerate(number_matches)]
+                    self.add_log(f"✅ Estratte {len(sections)} sezioni (pattern numerico)")
+                else:
+                    # Ultimo fallback: usa il testo completo
+                    sections = [("Risultati completi", context_content)]
+                    self.add_log("⚠️ Nessuna sezione trovata, usando il testo completo")
+        
+            # Crea HTML di base
+            html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Analisi: {keyword}</title>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        max-width: 1200px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        background-color: #f9f9f9;
+                    }}
+                    .header {{
+                        background-color: #2563eb;
+                        color: white;
+                        padding: 20px;
+                        border-radius: 8px;
+                        margin-bottom: 30px;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    }}
+                    .header h1 {{
+                        margin: 0;
+                        font-size: 24px;
+                    }}
+                    .header p {{
+                        margin: 5px 0 0;
+                        opacity: 0.8;
+                    }}
+                    .section {{
+                        background-color: white;
+                        padding: 20px;
+                        border-radius: 8px;
+                        margin-bottom: 20px;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                    }}
+                    .section-title {{
+                        font-weight: bold;
+                        font-size: 18px;
+                        margin-bottom: 15px;
+                        color: #2563eb;
+                        border-bottom: 1px solid #e5e7eb;
+                        padding-bottom: 8px;
+                    }}
+                    .error {{ background-color: #fee2e2; }}
+                    .ok {{ background-color: #f0fdf4; }}
+                    table {{
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 15px 0;
+                    }}
+                    th, td {{
+                        border: 1px solid #e5e7eb;
+                        padding: 8px 12px;
+                        text-align: left;
+                    }}
+                    th {{
+                        background-color: #f3f4f6;
+                    }}
+                    tr:nth-child(even) {{
+                        background-color: #f9fafb;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>Analisi: {keyword}</h1>
+                    <p>Generata il: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} - Sezioni trovate: {len(sections)}</p>
+                </div>
+                <div class="content">
+            """
+        
+            # Aggiungi le sezioni
+            for title, content in sections:
+                # Determina se è una risposta valida o un errore
+                is_error = "richiesta abortita" in content.lower() or len(content) < 30
+                section_class = "section error" if is_error else "section ok"
+            
+                # Converti le tabelle semplici in HTML
+                table_pattern = r'([^\n]+\|[^\n]+\|[^\n]+\n[-|]+\n(?:[^\n]+\|[^\n]+\|[^\n]+\n)+)'
+                content = re.sub(table_pattern, self._convert_markdown_table_to_html, content)
+            
+                # Converti i punti elenco in HTML
+                bullet_pattern = r'(?:^|\n)(\s*[•\*\-]\s+[^\n]+)(?:\n|$)'
+                content = re.sub(bullet_pattern, r'<li>\1</li>', content)
+                if '<li>' in content:
+                    content = content.replace('<li>', '<ul><li>').replace('</li>', '</li></ul>')
+            
+                # Converti newline in <br> per HTML
+                content_html = content.replace("\n", "<br>")
+            
+                html += f"""
+                <div class="{section_class}">
+                    <div class="section-title">{title}</div>
+                    <div>{content_html}</div>
+                </div>
+                """
+        
+            html += """
+                </div>
+            </body>
+            </html>
+            """
+        
+            # Salva il file HTML
+            html_path = f"output/analisi_html/{safe_keyword}_{timestamp}.html"
+            with open(html_path, "w", encoding="utf-8") as f:
+                f.write(html)
+        
+            # Salva anche una versione "current"
+            current_path = f"output/analisi_html/{safe_keyword}_current.html"
+            with open(current_path, "w", encoding="utf-8") as f:
+                f.write(html)
+        
+            self.add_log(f"✅ HTML salvato: {html_path} e {current_path}")
+        
+            return html, html_path
+        except Exception as e:
+            import traceback
+            self.add_log(f"❌ Errore nel formato HTML: {str(e)}")
+            self.add_log(traceback.format_exc())
+            return None, None
+
+    def _convert_markdown_table_to_html(self, match):
+        """Converte una tabella markdown in HTML"""
+        try:
+            table_text = match.group(1)
+            lines = table_text.strip().split('\n')
+        
+            # Rimuovi la riga di separazione
+            lines = [line for line in lines if not line.strip().startswith('|-')]
+        
+            html_table = "<table>\n<thead>\n<tr>\n"
+        
+            # Intestazioni
+            if lines:
+                header_cells = [cell.strip() for cell in lines[0].split('|') if cell.strip()]
+                for cell in header_cells:
+                    html_table += f"<th>{cell}</th>\n"
+                html_table += "</tr>\n</thead>\n<tbody>\n"
+        
+            # Righe dati
+            for line in lines[1:]:
+                if line.strip():
+                    html_table += "<tr>\n"
+                    cells = [cell.strip() for cell in line.split('|') if cell]
+                    for cell in cells:
+                        html_table += f"<td>{cell}</td>\n"
+                    html_table += "</tr>\n"
+        
+            html_table += "</tbody>\n</table>"
+            return html_table
+        except Exception:
+            return match.group(0)  # Ritorna il testo originale in caso di errori    
 
     def format_analysis_results_html(self, keyword, market, book_type, language, context=None):
         """
@@ -7350,74 +6608,352 @@ class AIBookBuilder:
 
     def capture_formatted_response(self, driver):
         """
-        Cattura la risposta formattata direttamente dall'interfaccia di Genspark.
-    
-        Args:
-            driver: Il driver Selenium
-        
-        Returns:
-            str: HTML formattato della risposta o None se non trovato
+        Cattura TUTTE le risposte formattate dall'interfaccia di Genspark.
         """
         try:
             from selenium.webdriver.common.by import By
+            import time
         
-            # Trova il contenitore della risposta dell'AI
-            response_elements = driver.find_elements(By.CSS_SELECTOR, ".message-content") or \
-                               driver.find_elements(By.CSS_SELECTOR, "div.chat-message-item .content") or \
-                               driver.find_elements(By.CSS_SELECTOR, "div.chat-wrapper div.desc > div > div")
+            self.add_log("🔍 Inizio cattura HTML formattato completo")
+            time.sleep(2)
         
-            if not response_elements or len(response_elements) == 0:
-                self.add_log("❌ Nessun elemento di risposta trovato")
-                return None
+            # Prova a catturare tutte le risposte con JavaScript
+            try:
+                complete_html = driver.execute_script("""
+                    // Trova tutti i messaggi di risposta dell'AI
+                    var messages = Array.from(document.querySelectorAll('.message, .message-content, .chat-message-item, .text-wrap'));
+                
+                    // Filtra per identificare le risposte dell'AI
+                    var aiResponses = messages.filter(el => {
+                        var isUserMsg = el.classList.contains('user-message') || el.classList.contains('question');
+                        return !isUserMsg;
+                    });
+                
+                    // Costruisci un contenitore HTML per tutte le risposte
+                    var container = document.createElement('div');
+                
+                    // Aggiungi ogni risposta con un separatore
+                    aiResponses.forEach((resp, index) => {
+                        // Crea un separatore numerato
+                        var separator = document.createElement('h3');
+                        separator.textContent = 'Risposta #' + (index + 1);
+                        separator.style.borderTop = '2px solid #2563eb';
+                        separator.style.paddingTop = '15px';
+                        separator.style.marginTop = '25px';
+                    
+                        // Aggiungi separatore e risposta
+                        container.appendChild(separator);
+                        container.appendChild(resp.cloneNode(true));
+                    });
+                
+                    return container.innerHTML;
+                """)
             
-            # Prendiamo l'ultimo elemento (la risposta più recente)
-            response_element = response_elements[-1]
+                if complete_html and len(complete_html) > 100:
+                    self.add_log(f"✅ Catturate tutte le risposte AI: {len(complete_html)} caratteri")
+                
+                    styled_html = f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <style>
+                            body {{ font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }}
+                            pre {{ background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }}
+                            code {{ background-color: #f5f5f5; padding: 2px 4px; border-radius: 3px; }}
+                            table {{ border-collapse: collapse; width: 100%; margin-bottom: 20px; }}
+                            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+                            th {{ background-color: #f2f2f2; }}
+                            h1, h2, h3, h4 {{ color: #333; margin-top: 24px; margin-bottom: 16px; }}
+                            img {{ max-width: 100%; height: auto; }}
+                            .highlight {{ background-color: #ffeb3b; padding: 2px; }}
+                        </style>
+                        <title>Analisi Genspark Completa</title>
+                    </head>
+                    <body>
+                        <h1>Risultati Completi dell'Analisi</h1>
+                        <div class="genspark-responses">
+                            {complete_html}
+                        </div>
+                    </body>
+                    </html>
+                    """
+                
+                    return styled_html
+            except Exception as js_error:
+                self.add_log(f"⚠️ Errore nell'approccio JavaScript: {str(js_error)}")
         
-            # Ottieni l'HTML interno dell'elemento con JavaScript
-            formatted_html = driver.execute_script("""
-                return arguments[0].innerHTML;
-            """, response_element)
+            # In caso di fallimento, genera HTML dal file context.txt
+            return self._generate_html_from_context_file()
         
-            if formatted_html:
-                self.add_log(f"✅ HTML formattato acquisito: {len(formatted_html)} caratteri")
-            
-                # Aggiungi stili CSS necessari per una corretta visualizzazione
-                styled_html = f"""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <style>
-                        body {{ font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }}
-                        pre {{ background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }}
-                        code {{ background-color: #f5f5f5; padding: 2px 4px; border-radius: 3px; }}
-                        table {{ border-collapse: collapse; width: 100%; margin-bottom: 20px; }}
-                        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-                        th {{ background-color: #f2f2f2; }}
-                        h1, h2, h3, h4 {{ color: #333; margin-top: 24px; margin-bottom: 16px; }}
-                        img {{ max-width: 100%; height: auto; }}
-                        .highlight {{ background-color: #ffeb3b; padding: 2px; }}
-                    </style>
-                    <title>Analisi Genspark</title>
-                </head>
-                <body>
-                    <div class="genspark-response">
-                        {formatted_html}
-                    </div>
-                </body>
-                </html>
-                """
-            
-                return styled_html
-            else:
-                self.add_log("❌ HTML formattato vuoto")
-                return None
-            
         except Exception as e:
             self.add_log(f"❌ Errore nel catturare l'HTML formattato: {str(e)}")
             import traceback
             self.add_log(traceback.format_exc())
+        
+            # Tenta il fallback al file di contesto anche in caso di errore
+            try:
+                return self._generate_html_from_context_file()
+            except:
+                return None
+            
+    def _generate_html_from_context_file(self):
+        """
+        Helper method to generate HTML from context file with advanced formatting
+        """
+        try:
+            self.add_log("🔄 Generazione HTML avanzata dal file di contesto")
+    
+            import os
+            import re
+    
+            # Trova il file di contesto
+            keyword = self.get_current_keyword() or "unknown"
+            safe_keyword = re.sub(r'[\\/*?:"<>|]', "", keyword).replace(" ", "_")[:30]
+    
+            # Cerca prima il file specifico keyword, poi fallback al generico
+            context_file = f"context_{safe_keyword}.txt"
+            if not os.path.exists(context_file):
+                context_file = "context.txt"
+        
+            if os.path.exists(context_file):
+                with open(context_file, "r", encoding="utf-8") as f:
+                    content = f.read()
+        
+                # Estrai le sezioni in modo più affidabile
+                sections = []
+                section_pattern = r'===\s+([^=]+?)\s+-\s+\d{8}_\d{6}\s+===\n(.*?)(?=\n===|$)'
+                sections_matches = re.findall(section_pattern, content, re.DOTALL)
+        
+                if sections_matches:
+                    sections = [(title.strip(), content.strip()) for title, content in sections_matches]
+                    self.add_log(f"✅ Trovate {len(sections)} sezioni nel file di contesto")
+                else:
+                    # Fallback se non trova sezioni formattate
+                    sections = [("Risultato Completo", content)]
+            
+                # Genera HTML dalle sezioni con formattazione avanzata
+                sections_html = ""
+                for idx, (title, section_content) in enumerate(sections, 1):
+                    # Usa le funzioni di formattazione avanzata già esistenti
+                    processed_content = self._process_section_content(section_content)
+                
+                    sections_html += f"""
+                    <div class="section">
+                        <h2>Sezione {idx}: {title}</h2>
+                        <div>{processed_content}</div>
+                    </div>
+                    """
+            
+                # Usa il tuo metodo di generazione HTML esistente per la formattazione complessiva
+                styled_html = self._generate_styled_html(sections_html, len(sections))
+            
+                self.add_log(f"✅ HTML avanzato generato dal file di contesto: {len(styled_html)} caratteri")
+                return styled_html
+        
+            self.add_log("❌ Nessun file di contesto trovato")
             return None
+        except Exception as e:
+            self.add_log(f"❌ Errore nella generazione HTML dal file: {str(e)}")
+            import traceback
+            self.add_log(traceback.format_exc())
+            return None
+
+    def _process_section_content(self, content):
+        """
+        Processa il contenuto di una sezione applicando tutte le formattazioni avanzate
+        """
+        try:
+            import re
+        
+            # Identificazione e formattazione delle tabelle
+            table_pattern = r'(\|[^\n]*\|[^\n]*\n\|[\s\-:|\n]*\|[^\n]*\n(?:\|[^\n]*\|[^\n]*\n)+)'
+            tables = re.findall(table_pattern, content)
+        
+            for table in tables:
+                formatted_table = self.process_table_html(table)
+                content = content.replace(table, formatted_table)
+        
+            # Identificazione e formattazione delle liste
+            # Cerca pattern di lista con - o *
+            list_pattern = r'((?:^[-*•]\s+.+\n)+)'
+            lists = re.finditer(list_pattern, content, re.MULTILINE)
+        
+            for match in lists:
+                list_content = match.group(0)
+                formatted_list = self.process_list_html(list_content, "Generic List")
+                content = content.replace(list_content, formatted_list)
+        
+            # Identificazione e formattazione di pattern specifici
+            # Pattern strutturali (formattazione visiva, sottolineature, etc)
+            pattern_types = ["STRUCTURE_PATTERNS", "TITLE_PATTERNS"]
+            for pattern_type in pattern_types:
+                # Cerca sezioni che iniziano con il pattern_type
+                pattern_section_regex = f"{pattern_type}[^:]*:(.*?)(?=\n[A-Z_]+:|$)"
+                pattern_match = re.search(pattern_section_regex, content, re.DOTALL | re.IGNORECASE)
+            
+                if pattern_match:
+                    pattern_content = pattern_match.group(1).strip()
+                    formatted_pattern = self.process_patterns_html(pattern_content, pattern_type)
+                    content = content.replace(pattern_content, formatted_pattern)
+        
+            # Processa il testo rimanente
+            content = self.process_text(content)
+        
+            return content
+        except Exception as e:
+            self.add_log(f"⚠️ Errore nella formattazione avanzata: {str(e)}")
+            # Fallback semplice
+            return content.replace("\n", "<br>")
+
+
+        
+    def _generate_styled_html(self, content_html, response_count):
+        """
+        Genera l'HTML formattato con gli stili CSS.
+        """
+        print("DEBUG: VERSIONE AGGIORNATA DEL METODO ESEGUITA!")
+        
+        if not hasattr(self, '_analysis_session_id'):
+            import uuid
+            self._analysis_session_id = str(uuid.uuid4())[:8]
+
+        from datetime import datetime
+
+        # Genera un ID sessione se non esiste
+        if not hasattr(self, '_analysis_session_id'):
+            import uuid
+            self._analysis_session_id = str(uuid.uuid4())[:8]
+
+        styled_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ 
+                    font-family: Arial, sans-serif; 
+                    line-height: 1.6; 
+                    max-width: 1000px; 
+                    margin: 0 auto; 
+                    padding: 20px;
+                    background-color: #f9f9f9;
+                }}
+                .header {{
+                    background-color: #2563eb;
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                }}
+                .ai-response {{
+                    background-color: white;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin-bottom: 25px;
+                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+                    border-left: 4px solid #2563eb;
+                }}
+                pre {{ 
+                    background-color: #f5f5f5; 
+                    padding: 10px; 
+                    border-radius: 5px; 
+                    overflow-x: auto; 
+                    font-size: 14px;
+                    border: 1px solid #e0e0e0;
+                }}
+                code {{ 
+                    background-color: #f5f5f5; 
+                    padding: 2px 4px; 
+                    border-radius: 3px; 
+                    font-size: 0.9em;
+                    font-family: Consolas, monospace;
+                }}
+                table {{ 
+                    border-collapse: collapse; 
+                    width: 100%; 
+                    margin: 20px 0;
+                    background-color: white;
+                }}
+                th, td {{ 
+                    border: 1px solid #ddd; 
+                    padding: 12px; 
+                    text-align: left; 
+                }}
+                th {{ 
+                    background-color: #f2f2f2; 
+                    font-weight: bold;
+                }}
+                tr:nth-child(even) {{ 
+                    background-color: #f9f9f9; 
+                }}
+                h1, h2, h3, h4 {{ 
+                    color: #2563eb; 
+                    margin-top: 24px; 
+                    margin-bottom: 16px; 
+                }}
+                img {{ 
+                    max-width: 100%; 
+                    height: auto;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }}
+                .highlight {{ 
+                    background-color: #ffeb3b; 
+                    padding: 2px 4px; 
+                    border-radius: 3px;
+                }}
+                .meta-info {{
+                    color: #666;
+                    font-size: 0.9rem;
+                    margin-bottom: 20px;
+                    background-color: #f0f4f8;
+                    padding: 10px;
+                    border-radius: 5px;
+                }}
+                ul, ol {{
+                    margin-top: 15px;
+                    margin-bottom: 15px;
+                }}
+                li {{
+                    margin-bottom: 8px;
+                }}
+                blockquote {{
+                    border-left: 4px solid #ccc;
+                    margin: 15px 0;
+                    padding: 10px 20px;
+                    background-color: #f9f9f9;
+                    font-style: italic;
+                }}
+            </style>
+            <title>Analisi Genspark - Solo Risposte AI</title>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Analisi Genspark - Risposte AI</h1>
+                <p>Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            </div>
+    
+            <div class="meta-info">
+                <p><strong>Sessione:</strong> {getattr(self, '_analysis_session_id', 'N/A')}</p>
+                <p><strong>Numero totale di risposte:</strong> {response_count}</p>
+                <p><strong>Keyword:</strong> {self.get_current_keyword() if hasattr(self, 'get_current_keyword') else "N/A"}</p>
+            </div>
+    
+            <div class="ai-responses-container">
+                {content_html}
+            </div>
+    
+            <div class="footer" style="text-align: center; margin-top: 30px; color: #666; font-size: 0.8em;">
+                <p>Generato da PubliScript {datetime.now().year}</p>
+            </div>
+        </body>
+        </html>
+        """
+
+        return styled_html   
 
     def process_text(self, text):
         """
@@ -7480,6 +7016,651 @@ class AIBookBuilder:
         from framework.formatters import process_table_html as formatter_process_table_html
     
         return formatter_process_table_html(content)
+
+
+    def save_complete_html(self):
+        """
+        Salva solo la risposta dell'AI in un file HTML pulito e formattato.
+        """
+        try:
+            import os
+            import time
+            import webbrowser
+            from datetime import datetime
+            from selenium.webdriver.common.by import By
+
+            if not hasattr(self, 'driver') or not self.driver:
+                self.add_log("❌ Driver Selenium non disponibile")
+                return None
+
+            driver = self.driver
+
+            # Attendi che la risposta sia stabile
+            self.add_log("⏳ Attesa della risposta Genspark stabile...")
+        
+            try:
+                # Monitora stabilità come implementato nel metodo precedente
+                initial_length = 0
+                stable_cycles = 0
+                max_cycles = 10
+        
+                for cycle in range(max_cycles):
+                    elements = driver.find_elements(By.CSS_SELECTOR, "div.chat-wrapper div.desc > div > div > div")
+                    current_length = max([len(e.text.strip()) for e in elements]) if elements else 0
+            
+                    if current_length > 0:
+                        if current_length == initial_length:
+                            stable_cycles += 1
+                            self.add_log(f"⏳ Risposta stabile: {stable_cycles}/3 cicli ({current_length} caratteri)")
+                            if stable_cycles >= 3:  # 3 cicli di stabilità
+                                self.add_log(f"✅ Risposta stabilizzata a {current_length} caratteri")
+                                break
+                        else:
+                            stable_cycles = 0
+                            initial_length = current_length
+                            self.add_log(f"📝 Risposta in evoluzione: {current_length} caratteri (ciclo {cycle+1})")
+            
+                    time.sleep(2)  # Attendi 2 secondi tra i cicli
+            except Exception as wait_error:
+                self.add_log(f"⚠️ Timeout durante l'attesa - {str(wait_error)}")
+
+            # Estrai solo il testo della risposta (nessun HTML dell'interfaccia)
+            response_text = ""
+            try:
+                elements = driver.find_elements(By.CSS_SELECTOR, "div.chat-wrapper div.desc > div > div > div")
+                if elements:
+                    response_text = elements[-1].text
+                    self.add_log(f"✅ Testo della risposta estratto: {len(response_text)} caratteri")
+                else:
+                    self.add_log("⚠️ Nessun elemento di risposta trovato")
+                    return None
+            except Exception as extract_error:
+                self.add_log(f"⚠️ Errore nell'estrazione del testo: {str(extract_error)}")
+                return None
+
+            # Formatta il testo della risposta in HTML (convertendo tabelle e markdown)
+            formatted_html = self._format_text_to_html(response_text)
+            if not formatted_html:
+                self.add_log("⚠️ Errore nella formattazione del testo in HTML")
+                return None
+
+            # Prepara i nomi dei file
+            keyword = self.get_current_keyword() if hasattr(self, 'get_current_keyword') else "analisi"
+            safe_keyword = ''.join(c if c.isalnum() else '_' for c in keyword)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+            # Directory per gli screenshot
+            screenshots_dir = os.path.join("output", "visual_capture")
+            os.makedirs(screenshots_dir, exist_ok=True)
+        
+            # Directory per i file HTML
+            html_dir = os.path.join("output", "genspark_formatted")
+            os.makedirs(html_dir, exist_ok=True)
+        
+            # Cattura screenshot
+            screenshot_file = os.path.join(screenshots_dir, f"{safe_keyword}_screenshot_{timestamp}.png")
+            driver.save_screenshot(screenshot_file)
+            self.add_log(f"📸 Screenshot salvato: {screenshot_file}")
+        
+            # Crea un HTML completo e ben formattato
+            html_content = f"""<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Analisi: {keyword}</title>
+        <style>
+            body {{ 
+                font-family: Arial, sans-serif; 
+                line-height: 1.6; 
+                max-width: 1000px; 
+                margin: 0 auto; 
+                padding: 20px;
+                background-color: #f9f9f9;
+            }}
+        
+            h1, h2, h3, h4 {{ 
+                color: #2563eb; 
+                margin-top: 24px; 
+                margin-bottom: 16px; 
+            }}
+        
+            .content {{
+                background-color: white;
+                border-radius: 8px;
+                padding: 20px;
+                margin-top: 20px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }}
+        
+            table {{ 
+                border-collapse: collapse; 
+                width: 100%; 
+                margin: 20px 0;
+                background-color: white;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }}
+        
+            table.data-table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                font-size: 1em;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+            }}
+
+            table.data-table thead tr {{
+                background-color: #2563eb;
+                color: #ffffff;
+                text-align: left;
+            }}
+
+            table.data-table th,
+            table.data-table td {{
+                padding: 12px 15px;
+                border: 1px solid #dddddd;
+            }}
+
+            table.data-table tbody tr {{
+                border-bottom: 1px solid #dddddd;
+            }}
+
+            table.data-table tbody tr:nth-of-type(even) {{
+                background-color: #f3f3f3;
+            }}
+
+            table.data-table tbody tr:last-of-type {{
+                border-bottom: 2px solid #2563eb;
+            }}
+        
+            th, td {{ 
+                border: 1px solid #ddd; 
+                padding: 12px; 
+                text-align: left; 
+            }}
+        
+            th {{ 
+                background-color: #f2f2f2; 
+                font-weight: bold;
+            }}
+        
+            tr:nth-child(even) {{ 
+                background-color: #f9f9f9; 
+            }}
+        
+            ul, ol {{
+                margin-top: 15px;
+                margin-bottom: 15px;
+            }}
+        
+            li {{
+                margin-bottom: 8px;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>Analisi: {keyword}</h1>
+        <div class="content">
+            {formatted_html}
+        </div>
+    </body>
+    </html>
+    """
+        
+            # Salva il file HTML nella directory corretta
+            html_file = os.path.join("output", "genspark_formatted", f"{safe_keyword}_genspark_{timestamp}.html")
+            with open(html_file, "w", encoding="utf-8") as f:
+                f.write(enhanced_html)
+
+            self.add_log(f"✅ HTML con stili preservati salvato in: {html_file}")
+        
+            # Apri nel browser
+            try:
+                file_path = os.path.abspath(html_file).replace('\\', '/')
+                webbrowser.open("file:///" + file_path)
+                self.add_log("✅ File aperto nel browser")
+            except Exception as browser_error:
+                self.add_log(f"⚠️ Impossibile aprire nel browser: {str(browser_error)}")
+        
+            return html_file
+    
+        except Exception as e:
+            import traceback
+            self.add_log(f"❌ Errore nella cattura HTML: {str(e)}")
+            self.add_log(traceback.format_exc())
+        
+            # Prova con il metodo di fallback
+            try:
+                self.add_log("🔄 Utilizzo metodo di fallback...")
+                return self.save_complete_html_improved()
+            except Exception as fallback_error:
+                self.add_log(f"❌ Anche il fallback è fallito: {str(fallback_error)}")
+                return None
+
+    def _format_text_to_html(self, text):
+        """
+        Formatta il testo della risposta in HTML, convertendo markdown e tabelle.
+        """
+        try:
+            # Importa le funzioni necessarie
+            from framework.formatters import process_table_html, process_text
+            import re
+        
+            # Processo il testo iniziale
+            formatted_text = text
+        
+            # Rileva e formatta tabelle
+            table_pattern = r'(\|[^\n]+\|\n\|[\-\|: ]+\|\n(?:\|[^\n]+\|\n?)+)'
+        
+            def format_markdown_table(match):
+                table_text = match.group(1)
+                try:
+                    return process_table_html(table_text)
+                except:
+                    return table_text
+        
+            # Applica la formattazione delle tabelle
+            formatted_text = re.sub(table_pattern, format_markdown_table, formatted_text, flags=re.MULTILINE)
+        
+            # Converti elenchi
+            if hasattr(self, 'convert_lists_to_html'):
+                formatted_text = self.convert_lists_to_html(formatted_text)
+            
+            # Formattazione base markdown
+            # Titoli
+            formatted_text = re.sub(r'^##\s+(.+)$', r'<h2>\1</h2>', formatted_text, flags=re.MULTILINE)
+            formatted_text = re.sub(r'^###\s+(.+)$', r'<h3>\1</h3>', formatted_text, flags=re.MULTILINE)
+        
+            # Enfasi
+            formatted_text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', formatted_text)
+            formatted_text = re.sub(r'\*([^*]+)\*', r'<em>\1</em>', formatted_text)
+        
+            # Paragrafi
+            formatted_text = re.sub(r'\n\n', '</p><p>', formatted_text)
+            formatted_text = f"<p>{formatted_text}</p>"
+        
+            # Assicurati che le tabelle abbiano la classe corretta
+            formatted_text = formatted_text.replace('<table>', '<table class="data-table">')
+        
+            return formatted_text
+        
+        except Exception as e:
+            self.add_log(f"⚠️ Errore nella formattazione del testo: {str(e)}")
+            import traceback
+            self.add_log(traceback.format_exc())
+            return text  # Ritorna il testo originale in caso di errore
+
+    def _enhance_html_for_visibility(self, html_content):
+        """
+        Migliora l'HTML aggiungendo stili forzati per garantire la corretta visualizzazione 
+        di tabelle e altri elementi che potrebbero essere nascosti.
+        """
+        # CSS per forzare la visibilità di elementi potenzialmente nascosti
+        visibility_css = """
+        <style>
+        /* Stili forzati per tabelle */
+        table, tr, td, th {
+            display: table !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            border-collapse: collapse !important;
+            box-sizing: border-box !important;
+        }
+        table {
+            width: 100% !important;
+            margin: 15px 0 !important;
+            border: 1px solid #ddd !important;
+        }
+        th, td {
+            border: 1px solid #ddd !important;
+            padding: 8px !important;
+            text-align: left !important;
+        }
+        th {
+            background-color: #f2f2f2 !important;
+            font-weight: bold !important;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9 !important;
+        }
+    
+        /* Stili forzati per contenuti nascosti */
+        .hidden, [hidden], [style*="display: none"], [style*="visibility: hidden"] {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+    
+        /* Stili migliorati per elementi comuni */
+        body {
+            font-family: Arial, sans-serif !important;
+            line-height: 1.6 !important;
+            color: #333 !important;
+            max-width: 1200px !important;
+            margin: 0 auto !important;
+            padding: 20px !important;
+        }
+        h1, h2, h3, h4 {
+            color: #2563eb !important;
+            margin-top: 20px !important;
+            margin-bottom: 10px !important;
+        }
+        p {
+            margin-bottom: 15px !important;
+        }
+        </style>
+        """
+    
+        # Inserisci gli stili forzati prima della chiusura del tag head
+        if "</head>" in html_content:
+            enhanced_html = html_content.replace("</head>", f"{visibility_css}</head>")
+        else:
+            # Se non c'è un tag head, aggiungilo all'inizio del documento
+            enhanced_html = f"<!DOCTYPE html><html><head>{visibility_css}</head>{html_content}</html>"
+    
+        return enhanced_html
+
+    def save_complete_html_improved(self):
+        """
+        Versione migliorata che cattura la risposta COMPLETA dell'AI.
+        """
+        try:
+            import os
+            import time
+            import webbrowser
+            from datetime import datetime
+            from selenium.webdriver.common.by import By
+
+            if not hasattr(self, 'driver') or not self.driver:
+                self.add_log("❌ Driver Selenium non disponibile")
+                return None
+
+            driver = self.driver
+
+            # Attendi che la risposta sia COMPLETA (con il terminatore FINE)
+            self.add_log("🔍 Verifica completezza della risposta (ricerca terminatore FINE)...")
+        
+            try:
+                # Aspetta fino a 5 minuti per il terminatore FINE
+                max_wait_seconds = 300
+                start_time = time.time()
+                found_terminator = False
+            
+                while time.time() - start_time < max_wait_seconds:
+                    # Ottieni l'elemento della risposta
+                    elements = driver.find_elements(By.CSS_SELECTOR, "div.chat-wrapper div.desc > div > div > div")
+                
+                    if elements:
+                        # Controlla se il testo contiene il terminatore FINE
+                        response_text = elements[-1].text
+                        if "FINE" in response_text:
+                            terminator_pos = response_text.find("FINE")
+                            self.add_log(f"🔍 TERMINATORE: 'FINE' trovato alla posizione {terminator_pos}")
+                            found_terminator = True
+                        
+                            # Aspetta ancora 5 secondi per sicurezza
+                            time.sleep(5)
+                            break
+                
+                    # Log periodico
+                    elapsed = int(time.time() - start_time)
+                    if elapsed % 20 == 0:  # ogni 20 secondi
+                        if elements:
+                            self.add_log(f"⏳ Attesa terminatore FINE... ({elapsed}s, {len(elements[-1].text)} caratteri)")
+                        else:
+                            self.add_log(f"⏳ Attesa terminatore FINE... ({elapsed}s)")
+                
+                    # Attendi prima del prossimo controllo
+                    time.sleep(5)
+            
+                if not found_terminator:
+                    self.add_log("⚠️ Terminatore FINE non trovato dopo il timeout - potrebbe essere una risposta incompleta")
+                    # Qui potresti decidere di interrompere il processo
+            except Exception as wait_error:
+                self.add_log(f"⚠️ Errore durante l'attesa del terminatore: {str(wait_error)}")
+        
+            # Estrai l'HTML della risposta completa
+            try:
+                script = """
+                // Funzione per estrarre il contenuto principale della risposta
+                function extractMainResponse() {
+                    // Trova tutti gli elementi della conversazione
+                    const responseElements = document.querySelectorAll('div.chat-wrapper div.desc > div > div > div');
+                    if (!responseElements || responseElements.length === 0) return '';
+                
+                    // Prendi l'ultimo elemento che contiene la risposta finale
+                    const mainResponse = responseElements[responseElements.length - 1];
+                
+                    // Ritorna l'HTML completo di questo elemento
+                    return mainResponse.innerHTML;
+                }
+            
+                return extractMainResponse();
+                """
+                response_html = driver.execute_script(script)
+            
+                if not response_html:
+                    self.add_log("⚠️ Nessuna risposta trovata")
+                    return None
+                
+                self.add_log(f"✅ HTML della risposta estratto: {len(response_html)} caratteri")
+            except Exception as extract_error:
+                self.add_log(f"⚠️ Errore nell'estrazione dell'HTML: {str(extract_error)}")
+                return None
+
+            # Prepara i nomi dei file
+            keyword = self.get_current_keyword() if hasattr(self, 'get_current_keyword') else "analisi"
+            safe_keyword = ''.join(c if c.isalnum() else '_' for c in keyword)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+            # Directory per gli screenshot
+            screenshots_dir = os.path.join("output", "visual_capture")
+            os.makedirs(screenshots_dir, exist_ok=True)
+
+            # Directory per i file HTML
+            html_dir = os.path.join("output", "genspark_formatted")
+            os.makedirs(html_dir, exist_ok=True)
+
+            # Cattura screenshot
+            screenshot_file = os.path.join(screenshots_dir, f"{safe_keyword}_screenshot_{timestamp}.png")
+            driver.save_screenshot(screenshot_file)
+            self.add_log(f"📸 Screenshot salvato: {screenshot_file}")
+        
+            # Crea HTML completo
+            html_content = f"""<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Analisi: {keyword}</title>
+        <style>
+            body {{ 
+                font-family: Arial, sans-serif; 
+                line-height: 1.6; 
+                max-width: 1000px; 
+                margin: 0 auto; 
+                padding: 20px;
+                background-color: #f9f9f9;
+            }}
+        
+            h1, h2, h3, h4 {{ 
+                color: #2563eb; 
+                margin-top: 24px; 
+                margin-bottom: 16px; 
+            }}
+        
+            .content {{
+                background-color: white;
+                border-radius: 8px;
+                padding: 20px;
+                margin-top: 20px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }}
+        
+            table {{ 
+                border-collapse: collapse; 
+                width: 100%; 
+                margin: 20px 0;
+                background-color: white;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }}
+        
+            table.data-table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                font-size: 1em;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+            }}
+
+            table.data-table thead tr {{
+                background-color: #2563eb;
+                color: #ffffff;
+                text-align: left;
+            }}
+
+            table.data-table th,
+            table.data-table td {{
+                padding: 12px 15px;
+                border: 1px solid #dddddd;
+            }}
+
+            table.data-table tbody tr {{
+                border-bottom: 1px solid #dddddd;
+            }}
+
+            table.data-table tbody tr:nth-of-type(even) {{
+                background-color: #f3f3f3;
+            }}
+
+            table.data-table tbody tr:last-of-type {{
+                border-bottom: 2px solid #2563eb;
+            }}
+        
+            th, td {{ 
+                border: 1px solid #ddd; 
+                padding: 12px; 
+                text-align: left; 
+            }}
+        
+            th {{ 
+                background-color: #f2f2f2; 
+                font-weight: bold;
+            }}
+        
+            tr:nth-child(even) {{ 
+                background-color: #f9f9f9; 
+            }}
+        
+            ul, ol {{
+                margin-top: 15px;
+                margin-bottom: 15px;
+            }}
+        
+            li {{
+                margin-bottom: 8px;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>Analisi: {keyword}</h1>
+        <div class="content">
+            {response_html}
+        </div>
+    </body>
+    </html>
+    """
+        
+            # Salva il file HTML
+            html_file = os.path.join(html_dir, f"{safe_keyword}_genspark_{timestamp}.html")
+            with open(html_file, "w", encoding="utf-8") as f:
+                f.write(html_content)
+        
+            self.add_log(f"✅ HTML salvato in: {html_file}")
+        
+            # Apri nel browser
+            try:
+                file_path = os.path.abspath(html_file).replace('\\', '/')
+                webbrowser.open("file:///" + file_path)
+                self.add_log("✅ File aperto nel browser")
+            except Exception as browser_error:
+                self.add_log(f"⚠️ Impossibile aprire nel browser: {str(browser_error)}")
+
+            # Salva anche in formato DOCX
+            try:
+                # Verifica se python-docx è installato
+                import importlib.util
+                docx_spec = importlib.util.find_spec("docx")
+    
+                if docx_spec is None:
+                    self.add_log("⚠️ Libreria python-docx non trovata. Per il supporto DOCX esegui: pip install python-docx")
+                else:
+                    import docx
+                    from docx.shared import Pt, RGBColor
+                    from bs4 import BeautifulSoup
+                    import re
+        
+                    # Crea un nuovo documento
+                    doc = docx.Document()
+        
+                    # Aggiungi il titolo
+                    doc.add_heading(f"Analisi: {keyword}", 0)
+        
+                    # Analizza l'HTML con BeautifulSoup
+                    soup = BeautifulSoup(response_html, 'html.parser')
+        
+                    # Processa ogni elemento HTML e aggiungi al documento DOCX
+                    for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'p', 'ul', 'ol', 'table', 'div']):
+                        if element.name == 'h1':
+                            doc.add_heading(element.text, 1)
+                        elif element.name == 'h2':
+                            doc.add_heading(element.text, 2)
+                        elif element.name == 'h3':
+                            doc.add_heading(element.text, 3)
+                        elif element.name == 'p':
+                            doc.add_paragraph(element.text)
+                        elif element.name == 'ul':
+                            for li in element.find_all('li'):
+                                doc.add_paragraph(li.text, style='List Bullet')
+                        elif element.name == 'ol':
+                            for li in element.find_all('li'):
+                                doc.add_paragraph(li.text, style='List Number')
+                        elif element.name == 'table':
+                            # Crea una tabella con il numero appropriato di righe e colonne
+                            rows = element.find_all('tr')
+                            if rows:
+                                # Trova il numero massimo di celle in qualsiasi riga
+                                max_cols = max(len(row.find_all(['th', 'td'])) for row in rows)
+                    
+                                # Crea la tabella
+                                docx_table = doc.add_table(rows=len(rows), cols=max_cols)
+                                docx_table.style = 'Table Grid'
+                    
+                                # Popola la tabella
+                                for i, row in enumerate(rows):
+                                    cells = row.find_all(['th', 'td'])
+                                    for j, cell in enumerate(cells):
+                                        if j < max_cols:  # Assicurati di non superare il numero di colonne
+                                            docx_table.cell(i, j).text = cell.text
+        
+                    # Salva il documento DOCX
+                    docx_file = os.path.join(html_dir, f"{safe_keyword}_genspark_{timestamp}.docx")
+                    doc.save(docx_file)
+                    self.add_log(f"✅ DOCX salvato in: {docx_file}")
+            except Exception as docx_error:
+                self.add_log(f"⚠️ Errore nella creazione del file DOCX: {str(docx_error)}")
+        
+            return html_file
+    
+        except Exception as e:
+            import traceback
+            self.add_log(f"❌ Errore nella cattura HTML: {str(e)}")
+            self.add_log(traceback.format_exc())
+            return None
 
 # AGGIUNGERE QUESTO CODICE ALLA FINE DEL FILE book_builder.py
 

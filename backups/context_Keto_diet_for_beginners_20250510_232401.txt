@@ -1,0 +1,10 @@
+=== BACKUP Analisi Legacy: Keto diet for beginners - Keto_diet_for_beginners - 20250510_232401 ===
+Metadata: {
+  "type": "market_analysis_legacy",
+  "book_type": "Manuale (Non-Fiction)",
+  "keyword": "Keto diet for beginners",
+  "language": "Italiano",
+  "market": "USA",
+  "timestamp": "20250510_232401"
+}
+5) Identifica i principali gap nei libri esistenti su Amazon.com per Keto diet for beginners: analizza recensioni negative (1★–2★) per evidenziare frustrazioni comuni, bisogni insoddisfatti, contenuti confusi o trattati superficialmente; indica almeno 3 aree tematiche mancanti o trascurate e il valore che avrebbero se inserite in un nuovo libro; specifica se si tratta di carenze pratiche (esempi, esercizi), strutturali (ordine, chiarezza), o valoriali (tono, empatia); concludi con una tabella “Gap vs Opportunità” con colonne: Problema segnalato, Frequenza, Opportunità editoriale; scrivi in Italiano, titoli e keyword nella lingua del USA; concludi con la parola

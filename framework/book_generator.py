@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+
 def generate_book_crisp(book_title, book_language, voice_style, book_index,
                       crisp_framework=None, driver=None, chat_manager=None, current_analysis=None):
     """
@@ -46,6 +47,7 @@ def generate_book_crisp(book_title, book_language, voice_style, book_index,
             return "Errore: L'indice del libro è obbligatorio!"
         
         log(f"Avvio generazione libro CRISP 5.0: {book_title}")
+        log(f"DEBUG: generate_book_crisp() chiamato con → title='{book_title}', lang='{book_language}', voice_style='{voice_style[:30]}...', indice righe={len(book_index.splitlines())}")
         
         # Recupera l'ID del progetto CRISP corrente
         project_id = current_analysis.get('crisp_project_id') if current_analysis else None
@@ -54,8 +56,15 @@ def generate_book_crisp(book_title, book_language, voice_style, book_index,
             return "Errore: Nessun progetto CRISP corrente trovato"
         
         # Recupera i dati completi del progetto
-        project_data = crisp_framework.get_project_data(project_id)
+        project_data = crisp_framework.get_project_data(project_id) or {}
+        project_data = {
+            **project_data,
+            **(current_analysis.get('project_data', {}) if current_analysis else {})
+            
+        }
         
+        
+
         # Aggiorna i dati del progetto con le informazioni correnti
         project_data.update({
             "TITOLO_LIBRO": book_title,
@@ -83,6 +92,7 @@ def generate_book_crisp(book_title, book_language, voice_style, book_index,
         # Filtra per mantenere solo le righe che sembrano capitoli
         chapter_pattern = re.compile(r'(CAPITOLO|CHAPTER|PARTE|PART|SEZIONE|SECTION)\s*\d*\s*[:\.\-–—]?\s*(.*)', re.IGNORECASE)
         filtered_chapters = []
+        log(f"DEBUG: {len(filtered_chapters)} capitoli da generare: {filtered_chapters}")
         
         for line in chapters:
             match = chapter_pattern.match(line)
@@ -108,36 +118,43 @@ def generate_book_crisp(book_title, book_language, voice_style, book_index,
         
         # Genera ciascun capitolo
         for i, chapter_title in enumerate(filtered_chapters):
-            log(f"Generazione capitolo {i+1}/{len(filtered_chapters)}: {chapter_title}")
+            log(f"Generazione capitolo {i+1}/{len(filtered_chapters)}: '{chapter_title}'")
+            log(f"DEBUG: usando Big Idea='{project_data.get('BIG_IDEA')}', Pillars='{project_data.get('CONTENT_PILLARS')[:50]}...'")
         
-            # Prepara il prompt per il capitolo, sfruttando i dati CRISP
-            chapter_prompt = f"""
-            Scrivi il capitolo "{chapter_title}" per il libro "{book_title}" usando lo stile: {voice_style}.
-        
-            Il libro è posizionato come "{project_data.get('ANGOLO_ATTACCO', '')}" 
-            e rivolto a {project_data.get('BUYER_PERSONA_SUMMARY', 'lettori interessati a questo argomento')}.
-        
-            L'idea centrale (Big Idea) del libro è: {project_data.get('BIG_IDEA', 'Non specificata')}
-        
-            I pilastri di contenuto principali sono:
-            {project_data.get('CONTENT_PILLARS', 'Non specificati')}
-        
-            Il metodo proprietario presentato nel libro è:
-            {project_data.get('PROPRIETARY_METHOD', 'Non specificato')}
-        
-            Il capitolo deve essere dettagliato, coinvolgente e allineato con gli obiettivi generali del libro.
-            Lunghezza minima: 1500 parole.
-        
-            Includi:
-            - Un'introduzione coinvolgente
-            - Sezioni dettagliate sul tema
-            - Esempi pratici e applicabili
-            - Una conclusione che riassume i punti chiave
-        
-            Scrivi SOLO il contenuto del capitolo, senza includere "Capitolo X" o il titolo.
-        
-            Termina con la parola FINE quando il capitolo è completato.
-            """
+            # Costruzione avanzata del prompt, in 4 blocchi:
+            prompt_blocks = []
+
+            # (A) Research Instruction
+            prompt_blocks.append(
+                "Research Instruction:\n"
+                "Before you start writing, use reliable online sources to research each point "
+                "and integrate up-to-date facts, tax updates, and examples specific to high-income professionals."
+            )
+
+            # (B) Metadati da project_data (Big Idea, Pillars, Buyer Persona…)
+            prompt_blocks.append(
+                f"L'idea centrale (Big Idea) del libro è: {project_data.get('BIG_IDEA', 'Non specificata')}\n"
+                f"I pilastri di contenuto principali sono:\n{project_data.get('CONTENT_PILLARS', 'Non specificati')}\n"
+                f"Buyer Persona Summary: {project_data.get('BUYER_PERSONA_SUMMARY', 'lettori interessati a questo argomento')}"
+            )
+
+            # (C) Istruzioni di stile e struttura
+            prompt_blocks.append(
+                "✍️ WRITING STYLE:\n"
+                "Authoritative yet accessible prose in 2nd person (“you”), include visuals, diagrammi e flowchart per supportare concetti complessi.\n"
+                "🧱 STRUCTURE:\n"
+                "1) Strategic Snapshot\n2) Framework & Action Plan\n3) Visual Integration\n4) Wrap-Up Checklist"
+            )
+
+            # (D) Prompt di scrittura vero e proprio
+            prompt_blocks.append(
+                f"Scrivi il capitolo “{chapter_title}” per “{book_title}” in lingua {book_language}.\n"
+                f"Lunghezza minima: 1500 parole. Termina con FINE."
+            )
+
+            # Unisci i blocchi in un singolo prompt
+            chapter_prompt = "\n\n".join(prompt_blocks)
+
         
             # Invia il prompt a Genspark
             try:
@@ -151,6 +168,8 @@ def generate_book_crisp(book_title, book_language, voice_style, book_index,
                 time.sleep(0.5)
             
                 # Inserisci il testo
+                log("PROMPT:\n" + chapter_prompt)
+                log("DEBUG: chapter_prompt completo:\n" + chapter_prompt)
                 input_box.send_keys(chapter_prompt)
                 time.sleep(1)
             
@@ -159,6 +178,7 @@ def generate_book_crisp(book_title, book_language, voice_style, book_index,
                     EC.element_to_be_clickable((By.CSS_SELECTOR, "div.search-input-wrapper div.input-icon"))
                 )
                 send_button.click()
+                log("DEBUG: prompt inviato, in attesa di risposta…")
             
                 # Attendi risposta
                 log("⏳ Attesa risposta per il capitolo...")
@@ -168,6 +188,7 @@ def generate_book_crisp(book_title, book_language, voice_style, book_index,
                 stable_count = 0
                 max_stable_counts = 2
                 chapter_content = None
+                log(f"DEBUG: risposta ricevuta, lunghezza={len(response)} caratteri")
             
                 # Importazione per evitare dipendenze circolari
                 from ai_interfaces.genspark_driver import get_last_response
@@ -175,14 +196,21 @@ def generate_book_crisp(book_title, book_language, voice_style, book_index,
                 for attempt in range(60):  # Max 10 minuti (60 * 10 secondi)
                     time.sleep(10)
                     response = get_last_response(driver, log)
-                
+
+                    # — Inizio controllo esplicito “FINE” —
+                    if response and ("FINE_RISPOSTA" in response or "FINE" in response):
+                        log(f"✅ Terminatore esplicito trovato all'attempt {attempt+1}")
+                        terminator = "FINE_RISPOSTA" if "FINE_RISPOSTA" in response else "FINE"
+                        chapter_content = response.split(terminator)[0].strip()
+                        break   # esco subito, non aspetto stable_count
+                    # — Fine controllo esplicito “FINE” —
+
                     if response:
                         current_length = len(response)
-                    
                         if current_length == last_length:
                             stable_count += 1
                             if stable_count >= max_stable_counts:
-                                # Risposta stabile
+                                # Risposta stabile (fallback)
                                 chapter_content = response
                                 break
                         else:
@@ -209,6 +237,8 @@ def generate_book_crisp(book_title, book_language, voice_style, book_index,
                 )
             
                 log(f"✅ Capitolo {i+1} completato: {chapter_title}")
+                log(f"DEBUG: formatted_chapter starts with:\n{formatted_chapter[:100]}...")
+
             
                 # Gestisci il reset del contesto se necessario
                 from ai_interfaces.browser_manager import handle_context_limit
@@ -233,13 +263,18 @@ def generate_book_crisp(book_title, book_language, voice_style, book_index,
         # Unisci tutti i capitoli
         complete_book = "\n\n".join(book_content)
         
-        # Salva il libro in un file
+        # Salva il libro in una cartella dedicata al titolo
+        safe_title = re.sub(r'[<>:"/\\|?*]', '', book_title)[:30].replace(' ', '_')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        book_filename = f"book_{timestamp}.md"
+        os.makedirs(safe_title, exist_ok=True)
+        book_filename = os.path.join(
+            safe_title,
+            f"{safe_title}_{timestamp}.md"
+        )
         with open(book_filename, "w", encoding="utf-8") as f:
             f.write(complete_book)
-        
-        # Salva anche nel database CRISP
+
+        # Salva anche nel database CRISP, includendo il percorso corretto
         crisp_framework._save_result_to_db(
             project_id,
             "COMPLETE_BOOK",
@@ -252,8 +287,8 @@ def generate_book_crisp(book_title, book_language, voice_style, book_index,
                 "filename": book_filename
             }
         )
-        
-        log(f"📚 Libro generato e salvato come: {book_filename}")
+        log(f"DEBUG: book_content contiene {len(book_content)} sezioni; salvataggio file '{book_filename}'")
+        log(f"📚 Libro generato e salvato come: {book_filename}'")
         return book_filename
     
     except Exception as e:
@@ -313,20 +348,6 @@ def generate_book(book_title, book_language, voice_style, book_index,
                  book_type_hidden=None, send_to_genspark=None):
     """
     Genera il libro utilizzando i dati dell'interfaccia e i dati CRISP disponibili.
-    
-    Args:
-        book_title: Titolo del libro
-        book_language: Lingua del libro
-        voice_style: Stile narrativo
-        book_index: Indice del libro
-        driver: Istanza del WebDriver Selenium
-        chat_manager: Istanza del ChatManager per il logging
-        current_analysis: Dizionario contenente i dati di analisi correnti
-        book_type_hidden: Tipo di libro (se disponibile)
-        send_to_genspark: Funzione per inviare testo a Genspark
-        
-    Returns:
-        str: Percorso del libro generato o messaggio di errore
     """
     # Funzione di log
     def log(message):
@@ -334,6 +355,9 @@ def generate_book(book_title, book_language, voice_style, book_index,
             chat_manager.add_log(message)
         else:
             print(message)
+
+    # Disabilita i messaggi CRISP ridondanti
+    disable_crisp_messages(chat_manager)
             
     if not book_title.strip():
         log("Errore: Il titolo del libro è obbligatorio!")
@@ -344,6 +368,23 @@ def generate_book(book_title, book_language, voice_style, book_index,
         return "Errore: L'indice del libro è obbligatorio!"
 
     try:
+        # Preparazione stile condensato
+        if isinstance(voice_style, str) and (voice_style.endswith('.txt') or '/' in voice_style or '\\' in voice_style):
+            try:
+                with open(voice_style, 'r', encoding='utf-8') as f:
+                    full_style = f.read()
+                # Estrai solo le prime 3-5 frasi per mantenere lo stile breve
+                import re
+                sentences = re.split(r'\.(?=\s|$)', full_style)
+                voice_style_summary = '. '.join([s for s in sentences[:5] if s.strip()]) + '.'
+                log(f"Stile caricato da file: {len(voice_style_summary)} caratteri (riassunto)")
+            except Exception as e:
+                log(f"Errore nel leggere il file di stile: {str(e)}")
+                voice_style_summary = "Stile professionale ma accessibile, con un tono conversazionale."
+        else:
+            # Limita la lunghezza dello stile
+            voice_style_summary = voice_style[:500] if len(voice_style) > 500 else voice_style
+        
         # Recupera il tipo di libro
         book_type = "Manuale (Non-Fiction)"  # Default
         if book_type_hidden:
@@ -359,44 +400,182 @@ def generate_book(book_title, book_language, voice_style, book_index,
         # Analizza l'indice per ottenere i capitoli
         chapters = _parse_book_index(book_index)
         log(f"Indice analizzato: {len(chapters)} capitoli trovati")
-    
-        # Recupera il contesto completo (dati CRISP)
-        context_data = {}
-        if current_analysis and current_analysis.get('project_data'):
-            context_data = current_analysis['project_data']
-    
-        # Aggiungi i dati dell'interfaccia al contesto
-        context_data['TITOLO_LIBRO'] = book_title
-        context_data['LINGUA_LIBRO'] = book_language
-        context_data['VOICE_STYLE'] = voice_style
+        
+        # IMPORTANTE: Crea una directory con nome breve per il libro invece di usare il titolo completo
+        import os
+        import re
+        
+        # Crea una versione abbreviata e sicura del titolo per la directory (max 50 caratteri)
+        safe_title = re.sub(r'[<>:"/\\|?*]', '', book_title)[:50].strip()
+        book_dir = os.path.join(os.getcwd(), f"book_{int(time.time())}")  # Usa timestamp invece del titolo
+        os.makedirs(book_dir, exist_ok=True)
+        
+        # Salva le informazioni sul libro in un file README
+        with open(os.path.join(book_dir, "README.txt"), "w", encoding="utf-8") as f:
+            f.write(f"Titolo: {book_title}\n")
+            f.write(f"Data generazione: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Lingua: {book_language}\n")
+            f.write(f"Tipo: {book_type}\n")
+            f.write(f"Numero capitoli: {len(chapters)}\n")
     
         # Genera ogni capitolo
         for i, chapter in enumerate(chapters):
             log(f"Generazione capitolo {i+1}/{len(chapters)}: {chapter['title']}")
         
-            # Prepara il prompt per questo capitolo
+            # Prepara il prompt con sostituzione esplicita delle variabili chiave
             full_prompt = chapter_prompt.replace("{text}", chapter['title'])
+            full_prompt = full_prompt.replace("{TITOLO_LIBRO}", book_title)
+            full_prompt = full_prompt.replace("{LINGUA_LIBRO}", book_language)
+            full_prompt = full_prompt.replace("{VOICE_STYLE}", voice_style_summary)
+            
+            # Rimuovi i placeholder non sostituiti
+            import re
+            full_prompt = re.sub(r'\{[A-Z_]+\}', '', full_prompt)
+
+
+            log("DEBUG: chapter_prompt completo:\n" + chapter_prompt)
+
+            log(f"Prompt preparato: {len(full_prompt)} caratteri")
         
-            # Sostituisci tutte le variabili dal contesto
-            for var_name, var_value in context_data.items():
-                placeholder = "{" + var_name + "}"
-                if placeholder in full_prompt and var_value:
-                    full_prompt = full_prompt.replace(placeholder, str(var_value))
+            # Invia il prompt utilizzando l'oggetto driver direttamente
+            try:
+                # Implementazione diretta che non dipende da send_to_genspark
+                from selenium.webdriver.common.by import By
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+                                
+                # Ottieni input box
+                input_box = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "div.search-input-wrapper textarea"))
+                )
+                
+                # Pulisci l'input box
+                input_box.clear()
+                time.sleep(0.5)
+                
+                # Inserisci il testo
+                log("⌨️ Inserimento testo nel prompt...")
+                for chunk in [full_prompt[i:i+200] for i in range(0, len(full_prompt), 200)]:
+                    input_box.send_keys(chunk)
+                    time.sleep(0.2)  # Piccola pausa tra i blocchi
+                
+                time.sleep(1)  # Pausa finale prima di inviare
+                
+                # Trova e clicca il pulsante di invio
+                send_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "div.search-input-wrapper div.input-icon"))
+                )
+                send_button.click()
+                
+                # Attendi la risposta
+                log("⏳ Attesa risposta per il capitolo...")
+                
+                # Usa la stessa logica di rilevamento del completamento usata nella fase di analisi
+                chapter_content = ""
+                last_length = 0
+                stable_count = 0
+                max_wait_cycles = 45  # ~15 minuti totali
+                stability_threshold = 3  # 3 cicli di stabilità
+                cycle_wait = 20  # 20 secondi per ciclo
+   
+                terminator_found = False             
+                for cycle in range(max_wait_cycles):
+                    try:
+                        time.sleep(cycle_wait)
+                        
+                        # Prova diversi selettori per le risposte
+                        selectors = [
+                            ".message-content", 
+                            "div.chat-wrapper div.desc > div > div > div",
+                            "div.message div.text-wrap",
+                            ".chat-message-item .content"
+                        ]
+                        
+                        # Cerca la risposta con tutti i selettori
+                        for selector in selectors:
+                            try:
+                                messages = driver.find_elements(By.CSS_SELECTOR, selector)
+                                if messages and len(messages) > 0:
+                                    current_text = messages[-1].text.strip()
+                                    if current_text:
+                                        chapter_content = current_text
+                                    
+                                        # Verifica terminazione esplicita
+                                        if "FINE_RISPOSTA" in chapter_content or "FINE" in chapter_content:
+                                            log(f"✅ Terminatore esplicito trovato al ciclo {cycle+1}")
+                                            if "FINE_RISPOSTA" in chapter_content:
+                                                chapter_content = chapter_content.split("FINE_RISPOSTA")[0].strip()
+                                            elif "FINE" in chapter_content:
+                                                chapter_content = chapter_content.split("FINE")[0].strip()
+                                            terminator_found = True
+                                            break
+                                        
+                                        # Verifica stabilità
+                                        current_length = len(chapter_content)
+                                        if current_length == last_length:
+                                            stable_count += 1
+                                            if stable_count >= stability_threshold:
+                                                log(f"✅ Risposta stabilizzata dopo {cycle+1} cicli")
+                                                break
+                                        else:
+                                            stable_count = 0
+                                            last_length = current_length
+                                
+                                        # Trovata risposta valida, esci dal ciclo selettori
+                                        break
+                            except Exception:
+                                continue
+
+                        # se abbiamo trovato il terminatore, interrompiamo anche il polling esterno
+                        if terminator_found:
+                            log(f"DEBUG: uscita anticipata dal polling al ciclo {cycle+1}")
+                            break   # esci dal for cycle
+      
+                        if "FINE_RISPOSTA" in chapter_content or "FINE" in chapter_content or stable_count >= stability_threshold:
+                            break
+                    except Exception as wait_error:
+                        log(f"⚠️ Errore durante l'attesa: {str(wait_error)}")
+                        continue
+                    
+                if not chapter_content:
+                    raise Exception(f"Timeout in attesa della risposta per il capitolo {chapter['title']}")
+                
+                # Pulizia finale del contenuto
+                if "FINE_RISPOSTA" in chapter_content:
+                    chapter_content = chapter_content.split("FINE_RISPOSTA")[0].strip()
+                elif "FINE" in chapter_content:
+                    chapter_content = chapter_content.split("FINE")[0].strip()
+                
+            except Exception as e:
+                log(f"Errore nell'invio del prompt: {str(e)}")
+                chapter_content = f"[Errore nella generazione del capitolo: {str(e)}]"
         
-            # Gestisci i placeholder non sostituiti
-            full_prompt = _handle_missing_placeholders(full_prompt)
-        
-            # Invia il prompt e ottieni la risposta
-            chapter_content = send_to_genspark(driver, full_prompt, log)
-        
-            # Pulisci la risposta
-            if "FINE_RISPOSTA" in chapter_content:
-                chapter_content = chapter_content.split("FINE_RISPOSTA")[0].strip()
-            elif "FINE" in chapter_content:
-                chapter_content = chapter_content.split("FINE")[0].strip()
-        
-            # Salva il capitolo
-            _save_chapter(chapter['title'], chapter_content, book_title, log)
+            # Salva il capitolo con un nome file sicuro
+            try:
+                # Crea un nome di file sicuro e breve
+                safe_chapter_name = f"capitolo_{i+1}"
+                chapter_file = os.path.join(book_dir, f"{safe_chapter_name}.docx")
+                
+                from docx import Document
+                doc = Document()
+                doc.add_heading(chapter['title'], 1)
+                
+                # Aggiungi il contenuto suddiviso per paragrafi
+                for paragraph in chapter_content.split('\n\n'):
+                    if paragraph.strip():
+                        if paragraph.strip().startswith('#'):
+                            # È un titolo
+                            level = paragraph.count('#')
+                            title_text = paragraph.strip('#').strip()
+                            doc.add_heading(title_text, level)
+                        else:
+                            # È un paragrafo normale
+                            doc.add_paragraph(paragraph)
+                
+                doc.save(chapter_file)
+                log(f"💾 Capitolo {i+1} salvato: {os.path.basename(chapter_file)}")
+            except Exception as save_error:
+                log(f"❌ Errore nel salvataggio del capitolo {i+1}: {str(save_error)}")
         
             # Applica un cooldown tra i capitoli
             if i < len(chapters) - 1:
@@ -404,14 +583,58 @@ def generate_book(book_title, book_language, voice_style, book_index,
                 log(f"Pausa di {cooldown_time} secondi prima del prossimo capitolo...")
                 time.sleep(cooldown_time)
     
-        log(f"✅ Libro generato con successo: {book_title}")
-        return f"Libro {book_title} generato con successo"
+        log(f"✅ Libro generato con successo in: {book_dir}")
+        return f"Libro {book_title} generato con successo in: {book_dir}"
     
     except Exception as e:
         error_msg = f"Errore durante la generazione del libro: {str(e)}"
         log(error_msg)
         logging.error(error_msg)
         return f"Errore: {str(e)}"
+
+def extract_voice_style_summary(voice_style):
+    """Estrae una versione condensata dello stile di voce."""
+    try:
+        if not voice_style:
+            return "Stile conversazionale e informativo."
+            
+        content = voice_style
+        
+        # Limita la lunghezza a circa 500 caratteri
+        if len(content) > 500:
+            # Estrai le frasi più rappresentative
+            import re
+            
+            # Cerca frasi chiave che definiscono lo stile
+            key_patterns = [
+                r'(?:tono|stile)[^\.]*?è[^\.]*?\.',  # "Il tono è formale."
+                r'(?:usa|utilizza)[^\.]*?(?:uno stile|un tono)[^\.]*?\.',  # "Utilizza uno stile conversazionale."
+                r'(?:linguaggio|registro)[^\.]*?(?:deve essere|è)[^\.]*?\.',  # "Il linguaggio deve essere tecnico."
+                r'(?:la voce|lo stile)[^\.]*?deve[^\.]*?\.'  # "La voce deve essere autoritaria."
+            ]
+            
+            summary = []
+            for pattern in key_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                if matches:
+                    # Prendiamo solo le prime 2 corrispondenze per ogni pattern
+                    for match in matches[:2]:
+                        if match.strip() not in summary:
+                            summary.append(match.strip())
+            
+            # Se non abbiamo trovato abbastanza frasi con i pattern, prendiamo le prime 3 frasi
+            if len(summary) < 3:
+                sentences = re.split(r'\.(?=\s|$)', content)
+                for sentence in sentences[:5]:
+                    if sentence.strip() and len(summary) < 3:
+                        summary.append(sentence.strip() + '.')
+                        
+            return "\n".join(summary)
+        else:
+            return content
+    except Exception as e:
+        print(f"Errore nell'estrazione del riassunto dello stile: {e}")
+        return "Stile conversazionale e informativo."  # Fallback
 
 def _parse_book_index(book_index):
     """Analizza l'indice e lo converte in una lista di capitoli strutturati."""
@@ -449,31 +672,35 @@ def _load_chapter_prompt(book_type):
         with open(template_file, "r", encoding="utf-8") as f:
             return f.read()
     except:
-        # Template predefinito
+        # Template predefinito semplificato
         return """
-        Scrivi il capitolo "{text}" per il libro "{TITOLO_LIBRO}" seguendo rigorosamente queste istruzioni di stile e struttura:
+        Scrivi il capitolo "{text}" per il libro "{TITOLO_LIBRO}" in lingua {LINGUA_LIBRO}.
     
-        STILE DI SCRITTURA:
-        - Utilizza il seguente stile narrativo: {VOICE_STYLE}
-        - Mantieni un tono coerente con l'angolo di attacco del libro: {ANGOLO_ATTACCO}
-        - Rivolgi il testo direttamente al lettore con le caratteristiche di: {BUYER_PERSONA_SUMMARY}
-        - Affronta i problemi principali evidenziati in: {IMPLEMENTATION_OBSTACLES}
-    
-        STRUTTURA E FORMATTAZIONE:
-        - Inizia con un'introduzione coinvolgente che aggancia immediatamente il lettore
-        - Dividi il capitolo in 3-5 sezioni principali con sottotitoli chiari
-        - Usa tabelle invece di elenchi puntati per presentare informazioni strutturate
-        - Includi almeno un esempio pratico o caso studio rilevante
-        - Chiudi con un riepilogo dei punti chiave e un collegamento al capitolo successivo
-    
-        CONTENUTO SPECIFICO:
-        - Allinea il contenuto alla Big Idea del libro: {BIG_IDEA}
-        - Integra i pilastri di contenuto rilevanti: {CONTENT_PILLARS}
-        - Quando applicabile, fai riferimento al metodo proprietario: {PROPRIETARY_METHOD}
-    
-        Sviluppa il contenuto in modo dettagliato, con una lunghezza compresa tra 2000-3000 parole.
-        Scrivi FINE_RISPOSTA quando hai terminato.
+        ISTRUZIONI DI STILE:
+        {VOICE_STYLE}
+        
+        STRUTTURA DEL CAPITOLO:
+        - Inizia con un'introduzione coinvolgente che catturi l'attenzione del lettore
+        - Dividi il contenuto in 3-5 sezioni principali con sottotitoli chiari
+        - Includi esempi pratici o casi studio rilevanti
+        - Termina con un riepilogo che riassuma i punti chiave
+        
+        Il contenuto deve essere dettagliato e approfondito, con una lunghezza di circa 2000-3000 parole.
+        
+        Scrivi FINE alla fine del capitolo.
         """
+
+def disable_crisp_messages(chat_manager=None):
+    """Disabilita temporaneamente i messaggi CRISP nei log"""
+    if chat_manager:
+        original_add_log = chat_manager.add_log
+        
+        def filtered_add_log(message):
+            if "CRISP" in message and ("Errore: Nessun progetto CRISP" in message or "Avvio generazione libro CRISP" in message):
+                return  # Ignora questo messaggio
+            return original_add_log(message)
+        
+        chat_manager.add_log = filtered_add_log
 
 def _handle_missing_placeholders(text):
     """Gestisce i placeholder non sostituiti nel prompt."""
